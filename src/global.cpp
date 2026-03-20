@@ -50,9 +50,4 @@ TInputDev*        Global::inputDev;
 Aircraft*         Global::aircraft;
 FlightRecorder*   Global::recorder;
 Robots*           Global::robots;
-pthread_mutex_t   Global::fdm_lock;
-
-Global::Global(void)
-{
-    pthread_mutex_init(&fdm_lock, NULL);
-}
+pthread_mutex_t   Global::fdm_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;

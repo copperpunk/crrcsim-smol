@@ -108,6 +108,9 @@ If you'd like to help with CRRCSIM, then send me an email!
 #include <string>
 #include <time.h>
 #include <pthread.h>
+#include <unistd.h>
+
+static volatile bool fdm_thread_running = true;
 
 //#define LOG_FRAMES
 
@@ -356,13 +359,16 @@ std::string reconfigureInputMethod(bool boRevertToMouse)
 
   printf("New input method: %s\n", method.c_str());
 
-  // stop old input method
+  // stop old input method, holding the FDM lock so the FDM thread
+  // doesn't call getInputData() on a deleted interface
+  Global::lockFDM();
   if (Global::TXInterface != (T_TX_Interface*)0)
   {
     Global::inputDev->closeJoystick();
     delete Global::TXInterface;
     Global::TXInterface = (T_TX_Interface*)0;
   }
+  Global::unlockFDM();
 
   // create new one
   if (method.compare(
@@ -632,13 +638,15 @@ static void *fdm_thread(void *)
     Global::Simulation->incSimSteps(1);
     Global::unlockFDM();
 
-    while (true) {
-        if (Global::TXInterface->getInputData(&Global::inputs)) {
-            Global::lockFDM();
+    while (fdm_thread_running) {
+        Global::lockFDM();
+        if (Global::TXInterface != NULL &&
+            Global::TXInterface->getInputData(&Global::inputs)) {
             Global::aircraft->getFDMInterface()->update(&Global::inputs, Global::dt, 1);
             Global::Simulation->incSimSteps(1);
-            Global::unlockFDM();
         }
+        Global::unlockFDM();
+        usleep((useconds_t)(Global::dt * 1000000));
     }
     return NULL;
 }
@@ -1064,8 +1072,8 @@ int main(int argc,char **argv)
     crrc_exit(CRRC_EXIT_FAILURE, s.c_str());
   }
 
-  pthread_cancel(fdm_thread_id);
-  Global::lockFDM();
+  fdm_thread_running = false;
+  pthread_join(fdm_thread_id, NULL);
 
   delete fdmenv;
   if (vario_sound != (T_VariometerSound*)0)

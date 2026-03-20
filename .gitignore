@@ -1,1 +1,21 @@
 out_cmake
+
+# Build artifacts
+*.o
+*.a
+*.so
+*.Po
+crrcsim
+stamp-h1
+compile
+
+# Autotools generated
+Makefile
+autom4te.cache/
+config.log
+config.status
+configure~
+crrc_config.h
+crrc_config.h.in~
+.deps/
+.dirstamp
