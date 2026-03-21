@@ -9,34 +9,34 @@
 deadzone: 0.05
 
 channels:
-  aileron:
-    axis: 2
-    min: -0.77
-    max: 0.98
-    center: 0.14
-    inverted: true
-    range: bidir
+    aileron:
+        axis: 2
+        min: -0.77
+        max: 0.98
+        center: 0.14
+        inverted: false
+        range: bidir
 
-  elevator:
-    axis: 5
-    min: -0.80
-    max: 0.75
-    center: -0.05
-    inverted: false
-    range: bidir
+    elevator:
+        axis: 5
+        min: -0.80
+        max: 0.75
+        center: -0.05
+        inverted: false
+        range: bidir
 
-  throttle:
-    axis: 1
-    min: -0.72
-    max: 0.83
-    center: 0.05
-    inverted: false
-    range: unidir
+    throttle:
+        axis: 1
+        min: -0.72
+        max: 0.83
+        center: 0.05
+        inverted: false
+        range: unidir
 
-  rudder:
-    axis: 0
-    min: -0.70
-    max: 0.84
-    center: 0.07
-    inverted: true
-    range: bidir
+    rudder:
+        axis: 0
+        min: -0.70
+        max: 0.84
+        center: 0.07
+        inverted: false
+        range: bidir
