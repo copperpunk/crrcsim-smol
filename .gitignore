@@ -19,3 +19,8 @@ crrc_config.h
 crrc_config.h.in~
 .deps/
 .dirstamp
+ChangeLog
+
+# Python
+__pycache__/
+*.pyc
