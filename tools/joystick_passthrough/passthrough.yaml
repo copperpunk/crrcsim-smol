@@ -1,0 +1,42 @@
+# Joystick passthrough configuration
+#
+# axis:     pygame joystick axis number
+# min/max:  raw axis range (from calibration)
+# center:   raw axis center position
+# inverted: flip sign after calibration
+# range:    "bidir" for [-0.5, 0.5] or "unidir" for [0.0, 1.0]
+
+deadzone: 0.05
+
+channels:
+  aileron:
+    axis: 2
+    min: -0.77
+    max: 0.98
+    center: 0.14
+    inverted: true
+    range: bidir
+
+  elevator:
+    axis: 5
+    min: -0.80
+    max: 0.75
+    center: -0.05
+    inverted: false
+    range: bidir
+
+  throttle:
+    axis: 1
+    min: -0.72
+    max: 0.83
+    center: 0.05
+    inverted: false
+    range: unidir
+
+  rudder:
+    axis: 0
+    min: -0.70
+    max: 0.84
+    center: 0.07
+    inverted: true
+    range: bidir

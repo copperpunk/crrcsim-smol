@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SIL Data Flow: CRRCSim ↔ smol</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral', flowchart: {useMaxWidth: false}});</script>
+<style>
+html, body { background: #ffffff !important; color-scheme: light !important; }
+.mermaid { background: #ffffff !important; padding: 1em; border-radius: 8px; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 960px; margin: 2em auto; padding: 0 1em; line-height: 1.6; color: #1a1a1a; }
+h1, h2, h3 { color: #1a1a1a; }
+h1 { border-bottom: 2px solid #4a86c8; padding-bottom: 0.3em; }
+h2 { border-bottom: 1px solid #ddd; padding-bottom: 0.2em; margin-top: 2em; }
+code { background: #f0f0f0; padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.9em; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #ddd; padding: 0.5em 0.8em; text-align: left; }
+th { background: #f5f5f5; }
+.meta { color: #666; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>SIL Data Flow: CRRCSim ↔ smol Flight Controller</h1>
+
+<p class="meta">
+Created: 2026-03-20<br>
+Branch: <code>main</code><br>
+Commit: <code>337a7b0a</code> — Fix build errors, thread safety, and clean shutdown
+</p>
+
+<h2>Summary</h2>
+
+<p>CRRCSim (a 6-DOF flight dynamics simulator) and smol (a flight controller) communicate over UDP localhost:9002 using a lockstep binary protocol. The sim produces sensor data from its physics engine, the flight controller consumes it to run EKF + control loops, and sends back actuator commands that drive the simulated airplane.</p>
+
+<p>The protocol is defined once in <code>sil_protocol.h</code> (shared between both repos). Each message carries a 4-byte header identifying its type. The lockstep is driven by the IMU message — both sides block until the other responds, creating a deterministic simulation with no wall-clock dependency.</p>
+
+<p>An alternative mode exists: the <code>joystick_passthrough</code> Python tool can replace smol in the loop, sending actuator commands directly from a physical joystick. This lets you fly the airplane manually without the flight controller.</p>
+
+<h2>Detailed Description</h2>
+
+<h3>sil_protocol.h <span class="meta">(shared between both repos)</span></h3>
+<p>Defines 8 packed binary message structs and a 4-byte header. All structs use <code>#pragma pack(push, 1)</code> for wire-exact layout. <code>static_assert</code>s enforce sizes at compile time. A companion <code>sil_protocol.py</code> parses this header at import time to generate matching Python <code>ctypes</code> structs — single source of truth, zero duplication.</p>
+
+<h3>inputdev_apm.cpp <span class="meta">(CRRCSim side)</span></h3>
+<p>The sim's input device plugin. Called once per physics step via <code>getInputData()</code> from CRRCSim's main loop. When <code>protocol="smol"</code> is set in XML config, it takes the smol path:</p>
+<ol>
+<li><strong>Block-read</strong> a <code>SimActuatorMsg</code> from the flight controller (via <code>charDevice->read()</code>). This is the lockstep synchronization point — the sim waits here until the FC responds.</li>
+<li><strong>Map</strong> the actuator's aileron/elevator/throttle/rudder to <code>TSimInputs</code> which drives the FDM.</li>
+<li><strong>Extract FDM state</strong> from <code>Global::aircraft->getFDM()</code>. All positions/velocities are converted from feet (CRRCSim internal) to meters (SI). Body-frame accelerations include gravity subtraction then world-to-body rotation.</li>
+<li><strong>Send sensor messages</strong> at decimated rates using <code>_cycle</code> counter: IMU + Truth + RC every cycle, Mag every 2nd, Baro every 4th, Airspeed every 10th, GPS every 20th. Each sensor has configurable Gaussian white noise added (from XML <code>&lt;noise&gt;</code> element). Magnetometer uses WMM2015 earth field rotated to body frame via DCM.</li>
+</ol>
+<p>Uses a static <code>std::mt19937 rng(42)</code> — deterministic seed for reproducible noise sequences across runs.</p>
+
+<h3>apm.h / apm.cpp <span class="meta">(CRRCSim side)</span></h3>
+<p>Thin wrapper around <code>BufferedCharDevice</code>. Provides <code>send_msg(void*, len)</code> and <code>recv_actuator(SimActuatorMsg*)</code> which delegate directly to <code>charDevice->write()</code> / <code>charDevice->read()</code>. The underlying transport is configured by the XML device string (default: <code>udpserver,127.0.0.1/0.0.0.0,9002</code>).</p>
+
+<h3>hal_native_sil.cpp <span class="meta">(smol side)</span></h3>
+<p>The SIL HAL implementation. All state is file-static (no classes). Key behaviors:</p>
+<ul>
+<li><strong><code>ReadImu()</code></strong> — The lockstep entry point. Does a <strong>blocking</strong> <code>recvfrom()</code> until a <code>SimImuMsg</code> arrives. Then drains all remaining pending messages with <code>MSG_DONTWAIT</code>, caching each by type and setting per-sensor new-data flags. Returns an <code>ImuSample</code>. This is what makes the flight loop block until the sim sends data.</li>
+<li><strong><code>ReadGps/Mag/Baro/Rc()</code></strong> — Check-and-clear: if the new-data flag is set, return the cached data and clear the flag. Otherwise return <code>nullopt</code>. This mirrors how the real hardware HAL works with different sensor rates.</li>
+<li><strong><code>WriteServos()</code></strong> — Converts PWM µs back to normalized floats using servo params, builds a <code>SimActuatorMsg</code> echoing the last IMU sequence number, and sends via <code>sendto()</code>.</li>
+<li><strong>Clock</strong> — Driven by <code>SimImuMsg.time_sec</code>, not wall clock. <code>SleepUntilNextCycle()</code> is a no-op.</li>
+</ul>
+
+<h3>main_native_sil.cpp <span class="meta">(smol side)</span></h3>
+<p>Entry point for the SIL build. Parses <code>--output &lt;path&gt;</code> for snapshot logging. Initializes HAL and FlightLoop, spawns a background thread (log drain + telemetry), then loops <code>FlightLoop::Step()</code> until SIGINT or negative time from <code>ReadImu()</code>.</p>
+
+<h3>flight_loop.cpp <span class="meta">(smol side, unmodified)</span></h3>
+<p>The 100 Hz control loop. Each <code>Step()</code>: read all sensors → EKF time update (IMU) → EKF measurement updates (GPS/Mag/Baro/Accel) → get state estimate → parse RC input → cascade controller → servo mixer → <code>hal::WriteServos()</code>. The flight loop has no knowledge of SIL vs hardware — it calls the same <code>hal::*</code> API either way.</p>
+
+<h3>joystick_passthrough/main.py <span class="meta">(Python tool)</span></h3>
+<p>Drop-in replacement for smol in the lockstep loop. Reads a physical joystick via pygame, maps axes through a YAML calibration config, and sends <code>SimActuatorMsg</code> to the sim on each cycle. Blocks on <code>recvfrom()</code> waiting for <code>SimImuMsg</code> (same lockstep). Drains all other sensor messages without processing them.</p>
+
+<h3>Observations</h3>
+<ul>
+<li><strong>Unit conversion duplication:</strong> <code>getInputDataAPM()</code> and <code>getInputDataSmol()</code> both extract FDM state with identical feet→meters conversion. Could be a shared helper, but the two paths diverge enough downstream that merging them would reduce readability.</li>
+<li><strong>Hardcoded channel mapping in WriteServos:</strong> <code>hal_native_sil.cpp:337-340</code> assumes conventional airframe layout (ch0=aileron, ch1=elevator, ch2=throttle, ch3=rudder). This works because the servo mixer already handles airframe-specific mixing and outputs channels in this order for conventional layouts. But it would break if someone changed the mixer output channel order without updating the SIL HAL.</li>
+<li><strong>RC mode switches hardcoded:</strong> <code>inputdev_apm.cpp:416-417</code> sends mode_a=2012, mode_b=2012 (both high = Manual mode). There is no way to change flight mode from the sim side currently.</li>
+</ul>
+
+<h2>Message Rates</h2>
+
+<table>
+<tr><th>Message</th><th>Direction</th><th>Rate</th><th>Cycle Modulo</th><th>Size (bytes)</th></tr>
+<tr><td>SimImuMsg</td><td>sim → FC</td><td>100 Hz</td><td>every</td><td>36</td></tr>
+<tr><td>SimTruthMsg</td><td>sim → FC</td><td>100 Hz</td><td>every</td><td>56</td></tr>
+<tr><td>SimRcMsg</td><td>sim → FC</td><td>100 Hz</td><td>every</td><td>24</td></tr>
+<tr><td>SimMagMsg</td><td>sim → FC</td><td>50 Hz</td><td>% 2</td><td>20</td></tr>
+<tr><td>SimBaroMsg</td><td>sim → FC</td><td>25 Hz</td><td>% 4</td><td>20</td></tr>
+<tr><td>SimAirspeedMsg</td><td>sim → FC</td><td>10 Hz</td><td>% 10</td><td>12</td></tr>
+<tr><td>SimGpsMsg</td><td>sim → FC</td><td>5 Hz</td><td>% 20</td><td>44</td></tr>
+<tr><td>SimActuatorMsg</td><td>FC → sim</td><td>100 Hz</td><td>every</td><td>24</td></tr>
+</table>
+
+<h2>Lockstep Sequence Diagram</h2>
+
+<div class="mermaid">
+sequenceDiagram
+    participant Sim as CRRCSim<br>(inputdev_apm.cpp)
+    participant UDP as UDP :9002
+    participant HAL as SIL HAL<br>(hal_native_sil.cpp)
+    participant FL as FlightLoop<br>(flight_loop.cpp)
+
+    Note over Sim: getInputDataSmol() called<br>by CRRCSim main loop
+
+    rect rgb(232, 240, 254)
+    Note over Sim,FL: Cycle N
+    Sim->>UDP: recv_actuator() [BLOCKING]
+    FL->>HAL: hal::WriteServos(pwm)
+    HAL->>UDP: sendto(SimActuatorMsg)
+    UDP->>Sim: SimActuatorMsg {seq, ail, ele, thr, rud}
+    Note over Sim: Map actuator → TSimInputs<br>FDM advances one step
+    Sim->>UDP: sendImu (every cycle)
+    Sim->>UDP: sendTruth (every cycle)
+    Sim->>UDP: sendRc (every cycle)
+    Sim->>UDP: sendMag (if cycle % 2 == 0)
+    Sim->>UDP: sendBaro (if cycle % 4 == 0)
+    Sim->>UDP: sendGps (if cycle % 20 == 0)
+    Sim->>UDP: recv_actuator() [BLOCKING]
+    Note over HAL: ReadImu() blocking recvfrom
+    UDP->>HAL: SimImuMsg + cached sensors
+    HAL->>FL: ImuSample (blocking return)
+    FL->>FL: EKF predict + fuse
+    FL->>FL: RC parse → controller → mixer
+    FL->>HAL: hal::WriteServos(pwm)
+    HAL->>UDP: sendto(SimActuatorMsg)
+    UDP->>Sim: SimActuatorMsg {seq, ail, ele, thr, rud}
+    end
+</div>
+
+<h2>Data Flow Diagram</h2>
+
+<div class="mermaid">
+flowchart TB
+    subgraph CRRCSIM["CRRCSim Process"]
+        FDM["FDM Engine<br>(6-DOF physics)<br>feet, radians"]
+        CONV["Unit Conversion<br>feet → meters<br>world → body frame"]
+        NOISE["Noise Model<br>Gaussian white noise<br>per-sensor sigma from XML"]
+        WMM["WMM2015<br>Earth field NED<br>→ body frame DCM"]
+        ATMOS["US Std Atmos 1962<br>altitude → pressure, temp<br>psf → Pa, R → °C"]
+        SEND["sendImu/Gps/Mag/<br>Baro/Airspeed/Truth/Rc"]
+        RECV["recv_actuator()<br>BLOCKING read"]
+        INPUTS["TSimInputs<br>aileron, elevator,<br>throttle, rudder"]
+        JOY["Global::inputs<br>(SDL joystick state)"]
+
+        FDM --> CONV
+        CONV --> NOISE
+        CONV --> WMM
+        CONV --> ATMOS
+        NOISE --> SEND
+        WMM --> NOISE
+        ATMOS --> SEND
+        CONV --> SEND
+        RECV --> INPUTS
+        INPUTS --> FDM
+        JOY --> SEND
+    end
+
+    subgraph PROTO["sil_protocol.h (shared)"]
+        MSGS["SimImuMsg (36B)<br>SimGpsMsg (44B)<br>SimMagMsg (20B)<br>SimBaroMsg (20B)<br>SimAirspeedMsg (12B)<br>SimTruthMsg (56B)<br>SimRcMsg (24B)<br>SimActuatorMsg (24B)"]
+    end
+
+    subgraph SMOL["smol Flight Controller Process"]
+        HALR["hal::ReadImu()<br>BLOCKING recvfrom<br>+ drain pending"]
+        CACHE["Sensor Cache<br>+ new-data flags"]
+        READS["hal::ReadGps/Mag/<br>Baro/Rc()<br>check flag → return or nullopt"]
+        EKF["SmolEKF<br>21-state filter<br>predict + fuse"]
+        CTRL["Cascade Controller<br>+ RC Input Parse<br>+ Flight Mode"]
+        MIX["Servo Mixer<br>control → PWM µs"]
+        HALW["hal::WriteServos()<br>PWM → normalized<br>→ SimActuatorMsg"]
+        CLK["Clock<br>driven by<br>SimImuMsg.time_sec"]
+
+        HALR --> CACHE
+        HALR --> CLK
+        CACHE --> READS
+        HALR --> EKF
+        READS --> EKF
+        READS --> CTRL
+        EKF --> CTRL
+        CTRL --> MIX
+        MIX --> HALW
+    end
+
+    SEND -->|"UDP :9002<br>sensor messages"| HALR
+    HALW -->|"UDP :9002<br>SimActuatorMsg"| RECV
+
+    subgraph ALT["Alternative: Joystick Passthrough"]
+        PYGAME["pygame joystick<br>+ YAML calibration"]
+        PYACT["make_actuator()<br>ctypes → bytes"]
+        PYDRAIN["drain_until_imu()<br>blocking recvfrom"]
+
+        PYGAME --> PYACT
+        PYDRAIN --> PYGAME
+    end
+
+    SEND -->|"UDP :9002"| PYDRAIN
+    PYACT -->|"UDP :9002"| RECV
+
+    style FDM fill:#d4edda,stroke:#28a745,color:#155724
+    style EKF fill:#d4edda,stroke:#28a745,color:#155724
+    style MSGS fill:#e8f0fe,stroke:#4a86c8,color:#1a1a1a
+    style RECV fill:#e8f0fe,stroke:#4a86c8,color:#1a1a1a
+    style HALR fill:#e8f0fe,stroke:#4a86c8,color:#1a1a1a
+    style CLK fill:#e8f0fe,stroke:#4a86c8,color:#1a1a1a
+    style INPUTS fill:#d4edda,stroke:#28a745,color:#155724
+    style JOY fill:#e8f0fe,stroke:#4a86c8,color:#1a1a1a
+</div>
+
+<h3>Diagram Legend</h3>
+<table>
+<tr><td style="background:#d4edda;width:2em;">&nbsp;</td><td>Core computation (FDM, EKF) — well-tested, clean</td></tr>
+<tr><td style="background:#e8f0fe;width:2em;">&nbsp;</td><td>Protocol / synchronization boundaries — lockstep points</td></tr>
+<tr><td style="background:#fff3cd;width:2em;">&nbsp;</td><td>Future concern (not currently flagged) — <code>Global::inputs</code> for RC comes from SDL joystick state, which only updates when the sim window has focus. Currently irrelevant because mode switches are hardcoded to Manual and the joystick passthrough reads pygame independently.</td></tr>
+</table>
+
+</body>
+</html>

@@ -19,6 +19,7 @@
 #define __APM_H__
 
 #include "../../mod_chardevice/chardevice.h"
+#include "sil-protocol/sil_protocol.h"
 
 
 struct apm_fdm {
@@ -46,7 +47,10 @@ class APM : BufferedCharDevice
 public:
   void put_state_data(struct apm_fdm *state);
   bool get_input(struct apm_input *input);
-  
+
+  void send_msg(const void* msg, int len);
+  bool recv_actuator(SimActuatorMsg* msg);
+
   APM(char* device)
   {
     init(device, false);

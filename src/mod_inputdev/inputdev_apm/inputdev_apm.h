@@ -22,41 +22,59 @@
 #include "../inputdev.h"
 #include "../../mod_misc/SimpleXMLTransfer.h"
 
+struct NoiseConfig {
+  bool enabled;
+  float accel_sigma;
+  float gyro_sigma;
+  float gps_pos_sigma;
+  float gps_vel_sigma;
+  float mag_sigma;
+  float baro_alt_sigma;
+  float airspeed_sigma;
+};
+
 class T_TX_InterfaceAPM : public T_TX_Interface
 {
   public:
    T_TX_InterfaceAPM();
    virtual ~T_TX_InterfaceAPM();
-   
-   /**
-    * Get input method
-    */
+
    virtual int inputMethod() { return(T_TX_Interface::eIM_apm); }
-   
-   /**
-    * Initialize interface. Read further config data from a file, if necessary.
-    */
+
    int init(SimpleXMLTransfer* config);
-   
-   /**
-    * Write configuration back
-    */
+
    virtual void putBackIntoCfg(SimpleXMLTransfer* config);
-      
-   /**
-    * Get current input data. If some value is not available, the value 
-    * is not overwritten and false is returned. In order to support
-    * lock-step scheduling with ArduPilot this function blocks until
-    * new input is available
-    *
-    * This function also outputs the current FDM state to APM
-    */
+
    bool getInputData(TSimInputs* inputs);
-   
+
 private:
+   bool getInputDataAPM(TSimInputs* inputs);
+   bool getInputDataSmol(TSimInputs* inputs);
+
+   void sendImu(float time_sec, float ax, float ay, float az,
+                float p, float q, float r);
+   void sendGps(float time_sec, double lat_deg, double lon_deg,
+                float alt_m, float vn, float ve, float vd);
+   void sendMag(float time_sec, float hx, float hy, float hz);
+   void sendBaro(float time_sec, float alt_m, float press_pa, float temp_C);
+   void sendAirspeed(float time_sec, float airspeed_mps);
+   void sendTruth(float time_sec, double lat_deg, double lon_deg,
+                  float alt_m, float vn, float ve, float vd,
+                  float phi, float theta, float psi, float airspeed_mps);
+   void sendRc(float time_sec);
+
+   float gaussNoise(float sigma);
+
    APM*              input;
-   uint8_t           reverse; // channel reverse flags
+   uint8_t           reverse;
    std::string       device;
+
+   bool              _use_smol_protocol;
+   uint32_t          _cycle;
+   NoiseConfig       _noise;
+
+   bool              _wmm_initialized;
+   double            _earth_field_ned[3]; // Gauss, NED
 };
 
 #endif

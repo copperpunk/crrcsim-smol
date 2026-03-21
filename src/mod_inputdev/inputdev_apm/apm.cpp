@@ -28,3 +28,13 @@ bool APM::get_input(struct apm_input *apm_input)
 {
     return charDevice->read((void*)apm_input, sizeof(*apm_input)) == sizeof(*apm_input);
 }
+
+void APM::send_msg(const void* msg, int len)
+{
+    charDevice->write(msg, len);
+}
+
+bool APM::recv_actuator(SimActuatorMsg* msg)
+{
+    return charDevice->read((void*)msg, sizeof(*msg)) == sizeof(*msg);
+}
