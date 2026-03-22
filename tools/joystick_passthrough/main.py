@@ -22,15 +22,20 @@ from pathlib import Path
 import pygame
 import yaml
 
-_SIL_PROTO_PATH = (
-    Path(__file__).resolve().parent.parent.parent
-    / "src"
-    / "mod_inputdev"
-    / "inputdev_apm"
-    / "sil-protocol"
-    / "sil_protocol.py"
+
+def _find_repo_root() -> Path:
+    d = Path(__file__).resolve().parent
+    while d != d.parent:
+        if (d / ".git").exists():
+            return d
+        d = d.parent
+    raise RuntimeError("Could not find repo root")
+
+
+_sil_proto_path = (
+    _find_repo_root() / "src" / "mod_inputdev" / "inputdev_apm" / "sil-protocol" / "sil_protocol.py"
 )
-_spec = importlib.util.spec_from_file_location("sil_protocol", _SIL_PROTO_PATH)
+_spec = importlib.util.spec_from_file_location("sil_protocol", _sil_proto_path)
 sil_protocol = importlib.util.module_from_spec(_spec)
 sys.modules["sil_protocol"] = sil_protocol
 _spec.loader.exec_module(sil_protocol)
