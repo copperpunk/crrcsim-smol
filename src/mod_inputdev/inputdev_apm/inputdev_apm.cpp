@@ -228,7 +228,8 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
               static_cast<float>(phi), static_cast<float>(theta),
               static_cast<float>(psi), airspeed_mps);
 
-    sendRc(time_sec);
+    // RC input comes from external joystick publisher, not from sim
+    // sendRc(time_sec);
 
     if (_cycle % 2 == 0) {
         if (!_wmm_initialized) {

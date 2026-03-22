@@ -214,11 +214,12 @@ ssize_t UdpServerCharDevice::read( void *buf, size_t count )
         if( retval > 0 )
         {
             assert( connectedClientAddrValid );
-            if( recvAddr.sin_addr.s_addr ^ connectedClientAddr.sin_addr.s_addr )
-            { // received data from different address than the one that first connected
+            if( recvAddr.sin_addr.s_addr != connectedClientAddr.sin_addr.s_addr ||
+                recvAddr.sin_port != connectedClientAddr.sin_port )
+            {
                 if( !peek )
-                    fprintf( stderr, "rejecting connection from additional client\n" );
-                retval = 0;
+                    fprintf( stderr, "New client connected (old client disconnected)\n" );
+                connectedClientAddr = recvAddr;
             }
         }
         if( !peek && retval > 0 )
@@ -311,6 +312,11 @@ ssize_t UdpServerCharDevice::read_blocking( void *buf, size_t count )
 
     ssize_t retval = ::recvfrom( fd, buf, count, MSG_WAITALL, (sockaddr*)&addr, &socklen);
     if (retval > 0) {
+        if (connectedClientAddrValid &&
+            (connectedClientAddr.sin_addr.s_addr != addr.sin_addr.s_addr ||
+             connectedClientAddr.sin_port != addr.sin_port)) {
+            fprintf(stderr, "New client connected (old client disconnected)\n");
+        }
         connectedClientAddrValid = true;
         connectedClientAddr = addr;
     }
