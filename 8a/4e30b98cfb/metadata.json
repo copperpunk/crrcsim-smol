@@ -1,0 +1,26 @@
+{
+  "cli_version": "dev",
+  "checkpoint_id": "8a4e30b98cfb",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "src/mod_inputdev/inputdev_apm/sil-protocol"
+  ],
+  "sessions": [
+    {
+      "metadata": "/8a/4e30b98cfb/0/metadata.json",
+      "transcript": "/8a/4e30b98cfb/0/full.jsonl",
+      "context": "/8a/4e30b98cfb/0/context.md",
+      "content_hash": "/8a/4e30b98cfb/0/content_hash.txt",
+      "prompt": "/8a/4e30b98cfb/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1433,
+    "cache_creation_tokens": 2997858,
+    "cache_read_tokens": 249633557,
+    "output_tokens": 350762,
+    "api_call_count": 1119
+  }
+}
