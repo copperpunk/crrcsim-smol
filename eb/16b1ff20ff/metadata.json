@@ -1,0 +1,27 @@
+{
+  "cli_version": "dev",
+  "checkpoint_id": "eb16b1ff20ff",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "src/mod_chardevice/udpserverchardevice.cpp",
+    "src/mod_inputdev/inputdev_apm/inputdev_apm.cpp"
+  ],
+  "sessions": [
+    {
+      "metadata": "/eb/16b1ff20ff/0/metadata.json",
+      "transcript": "/eb/16b1ff20ff/0/full.jsonl",
+      "context": "/eb/16b1ff20ff/0/context.md",
+      "content_hash": "/eb/16b1ff20ff/0/content_hash.txt",
+      "prompt": "/eb/16b1ff20ff/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1414,
+    "cache_creation_tokens": 2995238,
+    "cache_read_tokens": 244087927,
+    "output_tokens": 349078,
+    "api_call_count": 1106
+  }
+}
