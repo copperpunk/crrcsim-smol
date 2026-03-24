@@ -1,0 +1,34 @@
+{
+  "cli_version": "dev",
+  "checkpoint_id": "7aa3fde86d5e",
+  "session_id": "10209659-2a3f-4a89-9aa4-a6b60e747390",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-24T03:39:02.821363055Z",
+  "branch": "main",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "configs/smol_sensor_model.xml",
+    "crrcsim.xml",
+    "src/mod_inputdev/inputdev_apm/inputdev_apm.cpp",
+    "src/mod_inputdev/inputdev_apm/inputdev_apm.h"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "4de16753a211",
+  "token_usage": {
+    "input_tokens": 3876,
+    "cache_creation_tokens": 4707963,
+    "cache_read_tokens": 414440229,
+    "output_tokens": 588780,
+    "api_call_count": 1821
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-24T03:38:56.116011843Z",
+    "agent_lines": 179,
+    "human_added": 0,
+    "human_modified": 13,
+    "human_removed": 21,
+    "total_committed": 192,
+    "agent_percentage": 93.22916666666666
+  },
+  "transcript_path": ".claude/projects/-home-ubuntu-Documents-Github-smol/10209659-2a3f-4a89-9aa4-a6b60e747390.jsonl"
+}

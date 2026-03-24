@@ -1,0 +1,29 @@
+{
+  "cli_version": "dev",
+  "checkpoint_id": "7aa3fde86d5e",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "configs/smol_sensor_model.xml",
+    "crrcsim.xml",
+    "src/mod_inputdev/inputdev_apm/inputdev_apm.cpp",
+    "src/mod_inputdev/inputdev_apm/inputdev_apm.h"
+  ],
+  "sessions": [
+    {
+      "metadata": "/7a/a3fde86d5e/0/metadata.json",
+      "transcript": "/7a/a3fde86d5e/0/full.jsonl",
+      "context": "/7a/a3fde86d5e/0/context.md",
+      "content_hash": "/7a/a3fde86d5e/0/content_hash.txt",
+      "prompt": "/7a/a3fde86d5e/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 3876,
+    "cache_creation_tokens": 4707963,
+    "cache_read_tokens": 414440229,
+    "output_tokens": 588780,
+    "api_call_count": 1821
+  }
+}
