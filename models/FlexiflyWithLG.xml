@@ -67,18 +67,18 @@ FlexiflyXLM with tricycle landing gear for ground-start SIL testing.
   <wheels version="1" units="0">
     <!-- nose wheel with rudder steering -->
     <wheel percent_brake="0.1" caster_angle_rad="0">
-      <pos x="0.30" y="0.0" z="0.50" />
+      <pos x="0.30" y="0.0" z="0.5" />
       <spring constant="40" damping="0.5" max_force="50" />
       <steering mapping="RUDDER" max_angle="-0.35" />
     </wheel>
     <!-- left main wheel -->
     <wheel percent_brake="0.1" caster_angle_rad="0">
-      <pos x="-0.10" y="-0.40" z="0.50" />
+      <pos x="-0.10" y="-0.40" z="0.5" />
       <spring constant="40" damping="0.5" max_force="50" />
     </wheel>
     <!-- right main wheel -->
     <wheel percent_brake="0.1" caster_angle_rad="0">
-      <pos x="-0.10" y="0.40" z="0.50" />
+      <pos x="-0.10" y="0.40" z="0.5" />
       <spring constant="40" damping="0.5" max_force="50" />
     </wheel>
     <!-- right wingtip -->
@@ -106,7 +106,7 @@ FlexiflyXLM with tricycle landing gear for ground-start SIL testing.
     </wheel>
     <!-- tail -->
     <wheel percent_brake="1.0" caster_angle_rad="0.0">
-      <pos x="-1.56" y="0.0" z="0.05" />
+      <pos x="-1.56" y="0.0" z="-0.20" />
       <spring constant="10.0" damping="0.05" max_force="4.5" />
     </wheel>
     <!-- vert stab -->

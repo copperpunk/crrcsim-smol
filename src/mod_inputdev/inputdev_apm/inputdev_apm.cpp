@@ -45,9 +45,12 @@ T_TX_InterfaceAPM::T_TX_InterfaceAPM()
     _cycle = 0;
     _wmm_initialized = false;
     _noise = {};
+    _bias = {};
     _earth_field_ned[0] = 0;
     _earth_field_ned[1] = 0;
     _earth_field_ned[2] = 0;
+    _origin_lat_rad = 0;
+    _origin_lon_rad = 0;
 }
 
 T_TX_InterfaceAPM::~T_TX_InterfaceAPM()
@@ -68,15 +71,43 @@ int T_TX_InterfaceAPM::init(SimpleXMLTransfer* config)
     _use_smol_protocol = (protocol == "smol");
 
     if (_use_smol_protocol) {
-        _noise.enabled = config->getInt("inputMethod.apm.noise.enabled", 1) != 0;
-        _noise.accel_sigma = config->getDouble("inputMethod.apm.noise.accel_sigma", 0.035);
-        _noise.gyro_sigma = config->getDouble("inputMethod.apm.noise.gyro_sigma", 0.001);
-        _noise.gps_pos_sigma = config->getDouble("inputMethod.apm.noise.gps_pos_sigma", 0.5);
-        _noise.gps_vel_sigma = config->getDouble("inputMethod.apm.noise.gps_vel_sigma", 0.1);
-        _noise.mag_sigma = config->getDouble("inputMethod.apm.noise.mag_sigma", 0.005);
-        _noise.baro_alt_sigma = config->getDouble("inputMethod.apm.noise.baro_alt_sigma", 0.3);
-        _noise.airspeed_sigma = config->getDouble("inputMethod.apm.noise.airspeed_sigma", 0.1);
-        printf("smol protocol: noise %s\n", _noise.enabled ? "enabled" : "disabled");
+        std::string sensor_model_path = config->getString(
+            "inputMethod.apm.sensor_model", "configs/smol_sensor_model.xml");
+        printf("smol protocol: loading sensor model from %s\n", sensor_model_path.c_str());
+        SimpleXMLTransfer sensor_cfg(sensor_model_path);
+
+        _noise.enabled     = sensor_cfg.getInt("apm.noise.enabled", 1) != 0;
+        _noise.accel_sigma = sensor_cfg.getDouble("apm.noise.accel_sigma", 0.035);
+        _noise.gyro_sigma  = sensor_cfg.getDouble("apm.noise.gyro_sigma", 0.001);
+        _noise.gps_pos_sigma = sensor_cfg.getDouble("apm.noise.gps_pos_sigma", 0.5);
+        _noise.gps_vel_sigma = sensor_cfg.getDouble("apm.noise.gps_vel_sigma", 0.1);
+        _noise.mag_sigma   = sensor_cfg.getDouble("apm.noise.mag_sigma", 0.005);
+        _noise.baro_alt_sigma = sensor_cfg.getDouble("apm.noise.baro_alt_sigma", 0.3);
+        _noise.airspeed_sigma = sensor_cfg.getDouble("apm.noise.airspeed_sigma", 0.1);
+        printf("  noise %s\n", _noise.enabled ? "enabled" : "disabled");
+
+        _bias.accel_x  = sensor_cfg.getDouble("apm.bias.accel_x", 0.0);
+        _bias.accel_y  = sensor_cfg.getDouble("apm.bias.accel_y", 0.0);
+        _bias.accel_z  = sensor_cfg.getDouble("apm.bias.accel_z", 0.0);
+        _bias.gyro_x   = sensor_cfg.getDouble("apm.bias.gyro_x", 0.0);
+        _bias.gyro_y   = sensor_cfg.getDouble("apm.bias.gyro_y", 0.0);
+        _bias.gyro_z   = sensor_cfg.getDouble("apm.bias.gyro_z", 0.0);
+        _bias.mag_x    = sensor_cfg.getDouble("apm.bias.mag_x", 0.0);
+        _bias.mag_y    = sensor_cfg.getDouble("apm.bias.mag_y", 0.0);
+        _bias.mag_z    = sensor_cfg.getDouble("apm.bias.mag_z", 0.0);
+        _bias.baro_alt = sensor_cfg.getDouble("apm.bias.baro_alt", 0.0);
+        printf("  biases accel(%.3f,%.3f,%.3f) gyro(%.4f,%.4f,%.4f) "
+               "mag(%.3f,%.3f,%.3f) baro(%.1f)\n",
+               _bias.accel_x, _bias.accel_y, _bias.accel_z,
+               _bias.gyro_x, _bias.gyro_y, _bias.gyro_z,
+               _bias.mag_x, _bias.mag_y, _bias.mag_z,
+               _bias.baro_alt);
+
+        double origin_lat_deg = sensor_cfg.getDouble("apm.origin.latitude_deg", 0.0);
+        double origin_lon_deg = sensor_cfg.getDouble("apm.origin.longitude_deg", 0.0);
+        _origin_lat_rad = origin_lat_deg * M_PI / 180.0;
+        _origin_lon_rad = origin_lon_deg * M_PI / 180.0;
+        printf("  origin (%.6f, %.6f)\n", origin_lat_deg, origin_lon_deg);
     }
 
     strncpy(devicestr, device.c_str(), 100);
@@ -185,8 +216,8 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
 
     float time_sec = static_cast<float>(Global::dt * Global::Simulation->SimSteps());
 
-    double lat_rad = Global::aircraft->getFDM()->getLat();
-    double lon_rad = Global::aircraft->getFDM()->getLon();
+    double lat_rad = Global::aircraft->getFDM()->getLat() + _origin_lat_rad;
+    double lon_rad = Global::aircraft->getFDM()->getLon() + _origin_lon_rad;
     double alt_ft  = Global::aircraft->getFDM()->getAlt();
     double lat_deg = lat_rad * RAD_TO_DEG;
     double lon_deg = lon_rad * RAD_TO_DEG;
@@ -217,12 +248,12 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
         Global::aircraft->getFDM()->getVRelAirmass() * FEET2METERS);
 
     sendImu(time_sec,
-            ax + gaussNoise(_noise.accel_sigma),
-            ay + gaussNoise(_noise.accel_sigma),
-            az + gaussNoise(_noise.accel_sigma),
-            p + gaussNoise(_noise.gyro_sigma),
-            q + gaussNoise(_noise.gyro_sigma),
-            r + gaussNoise(_noise.gyro_sigma));
+            ax + _bias.accel_x + gaussNoise(_noise.accel_sigma),
+            ay + _bias.accel_y + gaussNoise(_noise.accel_sigma),
+            az + _bias.accel_z + gaussNoise(_noise.accel_sigma),
+            p + _bias.gyro_x + gaussNoise(_noise.gyro_sigma),
+            q + _bias.gyro_y + gaussNoise(_noise.gyro_sigma),
+            r + _bias.gyro_z + gaussNoise(_noise.gyro_sigma));
 
     sendTruth(time_sec, lat_deg, lon_deg, alt_m, vn, ve, vd,
               static_cast<float>(phi), static_cast<float>(theta),
@@ -264,9 +295,9 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
             (cphi*cth)*fd);
 
         sendMag(time_sec,
-                hx + gaussNoise(_noise.mag_sigma),
-                hy + gaussNoise(_noise.mag_sigma),
-                hz + gaussNoise(_noise.mag_sigma));
+                hx + _bias.mag_x + gaussNoise(_noise.mag_sigma),
+                hy + _bias.mag_y + gaussNoise(_noise.mag_sigma),
+                hz + _bias.mag_z + gaussNoise(_noise.mag_sigma));
     }
 
     if (_cycle % 4 == 0) {
@@ -274,7 +305,7 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
         ls_atmos(alt_ft, &sigma, &v_sound, &t_amb_r, &p_amb_psf);
         float press_pa = static_cast<float>(p_amb_psf * PSF_TO_PA);
         float temp_C = static_cast<float>(t_amb_r / 1.8 - 273.15);
-        float baro_alt = alt_m + gaussNoise(_noise.baro_alt_sigma);
+        float baro_alt = alt_m + _bias.baro_alt + gaussNoise(_noise.baro_alt_sigma);
 
         sendBaro(time_sec, baro_alt, press_pa, temp_C);
     }

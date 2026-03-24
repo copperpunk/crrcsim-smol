@@ -644,19 +644,7 @@ void CGUIMain::errorMsg(const char* message)
 
 void CGUIMain::doQuitDialog()
 {
-  reveal();
-  if (options_changed())
-  {
-    CGUIMsgBox *msg = new CGUIMsgBox(_("Configuration has changed, save?"), 
-                                      CRRC_DIALOG_OK | CRRC_DIALOG_CANCEL,
-                                      quitDialogCallback);
-    msg->setOKButtonLegend(_("Yes"));
-    msg->setCancelButtonLegend(_("No"));
-  }
-  else
-  {
-    Global::Simulation->quit();
-  }
+  Global::Simulation->quit();
 }
 
 // The menu entry callbacks.

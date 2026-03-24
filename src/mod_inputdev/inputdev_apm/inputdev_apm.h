@@ -33,6 +33,13 @@ struct NoiseConfig {
   float airspeed_sigma;
 };
 
+struct BiasConfig {
+  float accel_x, accel_y, accel_z;
+  float gyro_x, gyro_y, gyro_z;
+  float mag_x, mag_y, mag_z;
+  float baro_alt;
+};
+
 class T_TX_InterfaceAPM : public T_TX_Interface
 {
   public:
@@ -72,9 +79,12 @@ private:
    bool              _use_smol_protocol;
    uint32_t          _cycle;
    NoiseConfig       _noise;
+   BiasConfig        _bias;
 
    bool              _wmm_initialized;
    double            _earth_field_ned[3]; // Gauss, NED
+   double            _origin_lat_rad;
+   double            _origin_lon_rad;
 };
 
 #endif

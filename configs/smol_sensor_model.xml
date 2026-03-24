@@ -1,0 +1,50 @@
+<!-- smol sensor model configuration for CRRCSim SIL testing.
+     Copy the <apm> block into ~/.crrcsim/crrcsim.xml under <inputMethod>. -->
+<apm>
+  <device val="udpserver,127.0.0.1/0.0.0.0,9002" />
+  <protocol val="smol" />
+
+  <!-- Sensor noise (1-sigma values)
+       Sources: ICM-45686 datasheet, PX4 Gazebo Classic, ArduPilot SITL, emissare-simulator
+
+       accel_sigma: ICM-45686 noise density 70 µg/√Hz × √800 Hz ≈ 0.02 m/s².
+                    ArduPilot SITL: 0.35 m/s². PX4 Gazebo: 0.1 m/s².
+                    We use 0.035 m/s² (sensor-level, no vibration).
+       gyro_sigma:  ICM-45686 noise density 3.8 mdps/√Hz × √800 Hz ≈ 0.002 rad/s.
+                    ArduPilot: 0.03 rad/s. PX4 Gazebo: 0.01 rad/s.
+                    We use 0.001 rad/s (close to datasheet).
+       gps_pos_sigma: u-blox M10 CEP ≈ 1.5 m. ArduPilot: 0.2 m. emissare: 1.5 m.
+                      We use 0.5 m (typical open-sky).
+       gps_vel_sigma: u-blox M10 velocity accuracy ≈ 0.05 m/s.
+                      We use 0.1 m/s.
+       mag_sigma:   QMC5883 noise ~2 mGauss. PCB interference adds more.
+                    ArduPilot: 0.005 Gauss.
+       baro_alt_sigma: BMP390 noise ~1 Pa RMS → ~0.08 m altitude.
+                       ArduPilot: 0.2 m. emissare: 0.1 m.
+                       We use 0.3 m (includes thermal gradients and turbulence).
+  -->
+  <noise enabled="1"
+         accel_sigma="0.035"
+         gyro_sigma="0.001"
+         gps_pos_sigma="0.5"
+         gps_vel_sigma="0.1"
+         mag_sigma="0.005"
+         baro_alt_sigma="0.3"
+         airspeed_sigma="0.1" />
+
+  <!-- Sensor biases (constant offsets, simulating real hardware imperfections)
+       Sources: ICM-45686 datasheet, QMC5883L datasheet, BMP580 datasheet
+
+       accel_bias:  ICM-45686 zero-g offset ±20-50 mg → 0.2-0.5 m/s²
+       gyro_bias:   ICM-45686 zero-rate offset ±1-3 °/s → 0.017-0.052 rad/s
+       mag_bias:    Hard iron from PCB traces/components, typically 0.05-0.5 Gauss
+       baro_bias:   BMP580 absolute accuracy ±0.5 hPa → ~4m altitude offset
+  -->
+  <bias accel_x="0.1" accel_y="-0.05" accel_z="0.15"
+        gyro_x="0.003" gyro_y="-0.002" gyro_z="0.001"
+        mag_x="0.05" mag_y="-0.03" mag_z="0.02"
+        baro_alt="2.0" />
+
+  <!-- Flying field origin (WMM declination computed from this location) -->
+  <origin latitude_deg="38.5449" longitude_deg="-121.7405" />
+</apm>
