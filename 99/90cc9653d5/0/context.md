@@ -7568,3 +7568,31 @@ okay, let's look into crrcsim to understand the gyro issue
 
 Yes, fix crrcsim
 
+### Prompt 1152
+
+Okay, look at this file: validation/sil_logs/2026-03-28_13-27-24/
+
+### Prompt 1153
+
+[Request interrupted by user for tool use]
+
+### Prompt 1154
+
+THat is a really high floor. The aircraft cruises at 15 m/s.
+
+### Prompt 1155
+
+[Request interrupted by user]
+
+### Prompt 1156
+
+Take a look at last few seconds of the flight. Visually, the rudder is oscilating, even though the commanded attitude is (0,0,0). What is causing this?
+
+### Prompt 1157
+
+[Request interrupted by user]
+
+### Prompt 1158
+
+That's not very much. it must be a visual thing in crrcsim.
+
