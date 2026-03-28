@@ -1,0 +1,43 @@
+{
+  "cli_version": "dev",
+  "checkpoint_id": "7959e36cb4f8",
+  "session_id": "10209659-2a3f-4a89-9aa4-a6b60e747390",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-28T17:33:39.466608263Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crrcsim.xml",
+    "objects/sil_runway.ac",
+    "objects/sil_terrain.ac",
+    "scenery/sil.xml",
+    "src/mod_video/crrc_graphics.cpp",
+    "textures/runway.rgb",
+    "tools/generate_sil_scenery.py",
+    "objects/sil_barn.ac",
+    "objects/sil_hangar.ac",
+    "objects/sil_house.ac",
+    "objects/sil_silo.ac",
+    "objects/sil_watertower.ac",
+    "textures/grid.rgb"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "0de2c0777d79",
+  "token_usage": {
+    "input_tokens": 14404,
+    "cache_creation_tokens": 12331534,
+    "cache_read_tokens": 1040548412,
+    "output_tokens": 1486126,
+    "api_call_count": 4700
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-28T17:33:25.315529994Z",
+    "agent_lines": 0,
+    "human_added": 1787,
+    "human_modified": 7,
+    "human_removed": 0,
+    "total_committed": 1787,
+    "agent_percentage": 0
+  },
+  "transcript_path": ".claude/projects/-home-ubuntu-Documents-Github-smol/10209659-2a3f-4a89-9aa4-a6b60e747390.jsonl"
+}

@@ -1,0 +1,38 @@
+{
+  "cli_version": "dev",
+  "checkpoint_id": "7959e36cb4f8",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "crrcsim.xml",
+    "objects/sil_barn.ac",
+    "objects/sil_hangar.ac",
+    "objects/sil_house.ac",
+    "objects/sil_runway.ac",
+    "objects/sil_silo.ac",
+    "objects/sil_terrain.ac",
+    "objects/sil_watertower.ac",
+    "scenery/sil.xml",
+    "src/mod_video/crrc_graphics.cpp",
+    "textures/grid.rgb",
+    "textures/runway.rgb",
+    "tools/generate_sil_scenery.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/79/59e36cb4f8/0/metadata.json",
+      "transcript": "/79/59e36cb4f8/0/full.jsonl",
+      "context": "/79/59e36cb4f8/0/context.md",
+      "content_hash": "/79/59e36cb4f8/0/content_hash.txt",
+      "prompt": "/79/59e36cb4f8/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 14404,
+    "cache_creation_tokens": 12331534,
+    "cache_read_tokens": 1040548412,
+    "output_tokens": 1486126,
+    "api_call_count": 4700
+  }
+}
