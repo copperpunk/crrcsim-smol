@@ -9,6 +9,7 @@
     "src/global.cpp",
     "src/global.h",
     "src/mod_inputdev/inputdev_apm/inputdev_apm.cpp",
+    "src/mod_inputdev/inputdev_apm/sil-protocol",
     "src/mod_video/crrc_graphics.cpp"
   ],
   "sessions": [
@@ -21,10 +22,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 14129,
-    "cache_creation_tokens": 12007068,
-    "cache_read_tokens": 1004722725,
-    "output_tokens": 1405143,
-    "api_call_count": 4478
+    "input_tokens": 14141,
+    "cache_creation_tokens": 12008619,
+    "cache_read_tokens": 1007475537,
+    "output_tokens": 1406029,
+    "api_call_count": 4486
   }
 }
