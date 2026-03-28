@@ -3,7 +3,7 @@
   "checkpoint_id": "6ab4f66f0047",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 6,
+  "checkpoints_count": 1,
   "files_touched": [
     "models/FlexiflyWithLG.xml",
     "src/global.cpp",
@@ -21,10 +21,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 14121,
-    "cache_creation_tokens": 12005257,
-    "cache_read_tokens": 1002668203,
-    "output_tokens": 1404389,
-    "api_call_count": 4472
+    "input_tokens": 14129,
+    "cache_creation_tokens": 12007068,
+    "cache_read_tokens": 1004722725,
+    "output_tokens": 1405143,
+    "api_call_count": 4478
   }
 }
