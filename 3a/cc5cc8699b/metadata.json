@@ -1,0 +1,26 @@
+{
+  "cli_version": "dev",
+  "checkpoint_id": "3acc5cc8699b",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "src/mod_fdm/eom01/eom01.cpp"
+  ],
+  "sessions": [
+    {
+      "metadata": "/3a/cc5cc8699b/0/metadata.json",
+      "transcript": "/3a/cc5cc8699b/0/full.jsonl",
+      "context": "/3a/cc5cc8699b/0/context.md",
+      "content_hash": "/3a/cc5cc8699b/0/content_hash.txt",
+      "prompt": "/3a/cc5cc8699b/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 17227,
+    "cache_creation_tokens": 12742144,
+    "cache_read_tokens": 1166572301,
+    "output_tokens": 1627483,
+    "api_call_count": 5263
+  }
+}

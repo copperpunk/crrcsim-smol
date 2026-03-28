@@ -1,0 +1,31 @@
+{
+  "cli_version": "dev",
+  "checkpoint_id": "3acc5cc8699b",
+  "session_id": "10209659-2a3f-4a89-9aa4-a6b60e747390",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-28T21:20:34.803168353Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "src/mod_fdm/eom01/eom01.cpp"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "bdb7701244ef",
+  "token_usage": {
+    "input_tokens": 17227,
+    "cache_creation_tokens": 12742144,
+    "cache_read_tokens": 1166572301,
+    "output_tokens": 1627483,
+    "api_call_count": 5263
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-28T21:20:18.40696159Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 2,
+    "human_removed": 8,
+    "total_committed": 0,
+    "agent_percentage": 0
+  },
+  "transcript_path": ".claude/projects/-home-ubuntu-Documents-Github-smol/10209659-2a3f-4a89-9aa4-a6b60e747390.jsonl"
+}
