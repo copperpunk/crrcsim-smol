@@ -7596,3 +7596,15 @@ Take a look at last few seconds of the flight. Visually, the rudder is oscilatin
 
 That's not very much. it must be a visual thing in crrcsim.
 
+### Prompt 1159
+
+[Request interrupted by user]
+
+### Prompt 1160
+
+Why did you create the build_cmake folder? we build crrcsim using "just build"
+
+### Prompt 1161
+
+[Request interrupted by user for tool use]
+
