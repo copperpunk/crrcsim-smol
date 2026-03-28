@@ -130,7 +130,7 @@ FlexiflyXLM with tricycle landing gear for ground-start SIL testing.
     <animation type="ControlSurface">
       <!-- rudder -->
       <object name="vfin" max_angle="0.500" />
-      <control mapping="RUDDER" gain="-1.0" />
+      <control mapping="RUDDER" gain="1.0" />
       <hinge x="-1.42" y="0.00" z="-0.48" />
       <hinge x="-1.42" y="0.00" z="0.06" />
     </animation>

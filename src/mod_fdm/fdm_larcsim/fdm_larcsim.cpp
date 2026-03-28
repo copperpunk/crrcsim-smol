@@ -512,19 +512,18 @@ void CRRC_AirplaneSim_Larcsim::aero(TSimInputs* inputs,
   v_R_omega_atmo.r[1] = -m_V_body.v[2][1];
   v_R_omega_atmo.r[2] =  m_V_body.v[1][2];
 
-  if (V_rel_wind != 0)
   {
-    /* set net effective dimensionless rotation rates */
-    // jww: the comment above is misleading. The unit of those values must be rad!
-    Phat = (v_R_omega_body.r[0] - v_R_omega_atmo.r[0]) * B_ref / (2.0*V_rel_wind);
-    Qhat = (v_R_omega_body.r[1] - v_R_omega_atmo.r[1]) * C_ref / (2.0*V_rel_wind);
-    Rhat = (v_R_omega_body.r[2] - v_R_omega_atmo.r[2]) * B_ref / (2.0*V_rel_wind);
-  }
-  else
-  {
-    Phat=0;
-    Qhat=0;
-    Rhat=0;
+    // Non-dimensional rotation rates (radians, not dimensionless despite the name).
+    // Floor V_rel_wind to prevent numerical instability in the Adams-Bashforth
+    // angular rate integration. At low airspeed, the aero moment derivatives
+    // (Cl_p, Cn_r, etc.) scale as 1/V through Phat/Rhat, which can push the
+    // integrator past its stability boundary and produce oscillating body rates
+    // that grow exponentially. 20 ft/s (~6 m/s) is well below any aircraft's
+    // flying speed but above the unstable regime.
+    double V_floor = (V_rel_wind > 20.0) ? V_rel_wind : 20.0;
+    Phat = (v_R_omega_body.r[0] - v_R_omega_atmo.r[0]) * B_ref / (2.0*V_floor);
+    Qhat = (v_R_omega_body.r[1] - v_R_omega_atmo.r[1]) * C_ref / (2.0*V_floor);
+    Rhat = (v_R_omega_body.r[2] - v_R_omega_atmo.r[2]) * B_ref / (2.0*V_floor);
   }
 
   /* compute local CL at three spanwise locations */
