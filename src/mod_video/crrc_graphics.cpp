@@ -88,6 +88,12 @@ float flSloppyCam = 0;
  */
 CRRCMath::Vector3 looking_pos;
 
+CameraMode camera_mode = CAM_PILOT;
+static CRRCMath::Vector3 saved_pilot_pos;
+static CRRCMath::Vector3 camera_up(0, 1, 0);
+static float chase_behind = 10.0;
+static float chase_above  = 3.0;
+
 /**
  * The console overlay
  */
@@ -656,7 +662,7 @@ void display()
   
   sgSetVec3(viewpos, player_pos.r[0], player_pos.r[1], player_pos.r[2]);                
   sgSetVec3(planepos, looking_pos.r[0], looking_pos.r[1], looking_pos.r[2]);
-  sgSetVec3(up, 0.0, 1.0, 0.0);
+  sgSetVec3(up, camera_up.r[0], camera_up.r[1], camera_up.r[2]);
   context->setCameraLookAt(viewpos, planepos, up);
 
   // 3D scene
@@ -696,7 +702,7 @@ void display()
   glLoadIdentity();
   gluLookAt(player_pos.r[0], player_pos.r[1], player_pos.r[2],
             looking_pos.r[0], looking_pos.r[1], looking_pos.r[2],
-            0.0, 1.0, 0.0);
+            camera_up.r[0], camera_up.r[1], camera_up.r[2]);
   
   if (Global::training_mode==TRUE)
   {
@@ -1156,7 +1162,9 @@ void cleanup()
 
 void read_config(SimpleXMLTransfer* cf)
 {
-  flSloppyCam = cf->getDouble("video.camera.sloppy", 0.0);
+  flSloppyCam   = cf->getDouble("video.camera.sloppy", 0.0);
+  chase_behind  = cf->getDouble("video.camera.chase_behind", 10.0);
+  chase_above   = cf->getDouble("video.camera.chase_above", 3.0);
 }
 
 
@@ -1225,28 +1233,48 @@ void drawSolidCube(GLfloat size)
 
 /* end modified GLUT code */
 
-void UpdateCamera(float flDeltaT)
+static void updateCameraChase(float flDeltaT);
+
+void cycleCameraMode()
 {
+  if (camera_mode == CAM_PILOT)
+  {
+    saved_pilot_pos = player_pos;
+    camera_mode = CAM_FPV;
+    printf("Camera: FPV\n");
+  }
+  else if (camera_mode == CAM_FPV)
+  {
+    camera_mode = CAM_CHASE;
+    updateCameraChase(100.0);
+    printf("Camera: Chase\n");
+  }
+  else
+  {
+    player_pos = saved_pilot_pos;
+    camera_mode = CAM_PILOT;
+    printf("Camera: Pilot\n");
+  }
+}
+
+static void updateCameraPilot(float flDeltaT)
+{
+  camera_up = CRRCMath::Vector3(0, 1, 0);
   double  phimax    = flSloppyCam*zoom_get();
   double  max       = cos(phimax)*cos(phimax);
-  
+
   CRRCMath::Vector3 plane_pos = FDM2Graphics(Global::aircraft->getPos());
   CRRCMath::Vector3 look_dir  = looking_pos - player_pos;
   CRRCMath::Vector3 plane_dir = plane_pos - player_pos;
-  
+
   if (plane_dir.angle_cos_sqr(look_dir) < max)
   {
-    // Adjust the length of look_dir so that plane_dir, look_dir and
-    // (look_dir - plane_dir) form a right angle triangle.
     double k = (plane_dir.inner(plane_dir)) / (plane_dir.inner(look_dir));
     look_dir = look_dir * k;
-    // Calculate the difference vector...
     CRRCMath::Vector3 diff_dir = look_dir - plane_dir;
     double ddl = diff_dir.length();
     if (ddl > 0.001)
     {
-      // ...and adjust its length (the right angle triangle remains!) so that
-      // the angle between look_dir and plane_dir equals phimax.
       double tan_phi = fabs(tan(acos(sqrt(max))));
       look_dir = plane_dir + diff_dir*(plane_dir.length()*tan_phi/ddl);
       looking_pos = look_dir + player_pos;
@@ -1254,9 +1282,85 @@ void UpdateCamera(float flDeltaT)
   }
   else
   {
-    // slowly follow model
     CRRCMath::Vector3 diff_pos = plane_pos - looking_pos;
     looking_pos = looking_pos + diff_pos*(0.02*flDeltaT);
+  }
+}
+
+static void updateCameraFPV(float)
+{
+  CRRCMath::Vector3 plane_pos = FDM2Graphics(Global::aircraft->getPos());
+
+  double phi   = Global::aircraft->getFDM()->getPhi();
+  double theta = Global::aircraft->getFDM()->getTheta();
+  double psi   = Global::aircraft->getFDM()->getPsi();
+
+  double cp = cos(phi),   sp = sin(phi);
+  double ct = cos(theta), st = sin(theta);
+  double cy = cos(psi),   sy = sin(psi);
+
+  // Body-frame forward (1,0,0) rotated to NED world frame
+  CRRCMath::Vector3 fwd_ned(ct*cy, ct*sy, -st);
+
+  // Camera offset in body frame: slightly above CG so the nose is visible
+  // Body frame: X=forward, Y=right, Z=down → offset (0, 0, -0.15) is 0.15 ft up
+  double bx = 0, by = 0, bz = -0.15;
+  CRRCMath::Vector3 offset_ned(
+    ct*cy*bx + (sp*st*cy - cp*sy)*by + (cp*st*cy + sp*sy)*bz,
+    ct*sy*bx + (sp*st*sy + cp*cy)*by + (cp*st*sy - sp*cy)*bz,
+    -st*bx   +  sp*ct*by             +  cp*ct*bz);
+
+  // Body-frame up (0,0,-1) rotated to NED world frame
+  CRRCMath::Vector3 up_ned(
+    (cp*st*cy + sp*sy) * -1.0,
+    (cp*st*sy - sp*cy) * -1.0,
+    cp*ct * -1.0);
+
+  player_pos  = plane_pos + FDM2Graphics(offset_ned);
+  looking_pos = player_pos + FDM2Graphics(fwd_ned);
+  camera_up   = FDM2Graphics(up_ned);
+}
+
+static void updateCameraChase(float flDeltaT)
+{
+  camera_up = CRRCMath::Vector3(0, 1, 0);
+  CRRCMath::Vector3 plane_pos = FDM2Graphics(Global::aircraft->getPos());
+  CRRCMath::Vector3 vel = Global::aircraft->getFDM()->getVel();
+
+  double gnd_speed = sqrt(vel.r[0]*vel.r[0] + vel.r[1]*vel.r[1]);
+
+  double behind_north, behind_east;
+  if (gnd_speed > 3.28)
+  {
+    behind_north = -vel.r[0] / gnd_speed;
+    behind_east  = -vel.r[1] / gnd_speed;
+  }
+  else
+  {
+    double psi = Global::aircraft->getFDM()->getPsi();
+    behind_north = -cos(psi);
+    behind_east  = -sin(psi);
+  }
+
+  CRRCMath::Vector3 offset_ned(
+    behind_north * chase_behind,
+    behind_east  * chase_behind,
+    -chase_above);
+
+  CRRCMath::Vector3 desired = plane_pos + FDM2Graphics(offset_ned);
+
+  double k = 1.0 - exp(-3.0 * flDeltaT);
+  player_pos  = player_pos + (desired - player_pos) * k;
+  looking_pos = plane_pos;
+}
+
+void UpdateCamera(float flDeltaT)
+{
+  switch (camera_mode)
+  {
+    case CAM_PILOT: updateCameraPilot(flDeltaT); break;
+    case CAM_FPV:   updateCameraFPV(flDeltaT);   break;
+    case CAM_CHASE: updateCameraChase(flDeltaT);  break;
   }
 }
 

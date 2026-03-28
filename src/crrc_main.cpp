@@ -198,6 +198,12 @@ double calculate_z_rotation(double vel)
 
 void initialize_flight_model()
 {
+  if (Video::camera_mode != Video::CAM_PILOT)
+  {
+    player_pos = Global::scenery->getPlayerPosition();
+    Video::camera_mode = Video::CAM_PILOT;
+  }
+
   float Altitude;
 
   double velocity_rel = cfgfile->getDouble("launch.velocity_rel", 1);

@@ -35,6 +35,7 @@
 #include "zoom.h"
 #include "GUI/crrc_gui_main.h"
 #include "GUI/crrc_dialog.h"
+#include "mod_video/crrc_graphics.h"
 
 #if DEBUG_THERMAL_SCRSHOT == 1
 # include "mod_windfield/windfield.h"
@@ -142,7 +143,11 @@ void key_down(SDL_keysym *keysym)
             Global::HUDCompass = 1;
           }
           break;
-          
+
+        case SDLK_c:
+          Video::cycleCameraMode();
+          break;
+
         case KEY_ZOOM_IN:
           if (Global::inputDev->zoom_control == TInputDev::KEYBOARD)
           {
@@ -238,7 +243,7 @@ void key_down(SDL_keysym *keysym)
           break;
 #endif
 
-        case SDLK_c:
+        case SDLK_F5:
           switch (Global::aircraft->ReloadParams())
           {
             case 0:

@@ -6,7 +6,7 @@
     <zoom field_of_view="35" autozoom="0.050000001" />
     <camera sloppy="0" />
     <resolution>
-      <window x="800" y="600" />
+      <window x="1920" y="1080" />
       <fullscreen x="800" y="600" />
     </resolution>
     <textures fUse_textures="1" fUse_mipmaps="1" />

@@ -66,6 +66,10 @@ extern float flSloppyCam;
 
 extern CRRCMath::Vector3 looking_pos;
 
+enum CameraMode { CAM_PILOT, CAM_FPV, CAM_CHASE };
+extern CameraMode camera_mode;
+void cycleCameraMode();
+
 // --- functions defined in crrc_graphics.cpp --------------
 
 unsigned char * read_bwimage(const char *name, int *w, int *h);
