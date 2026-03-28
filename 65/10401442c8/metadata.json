@@ -1,0 +1,26 @@
+{
+  "cli_version": "dev",
+  "checkpoint_id": "6510401442c8",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "src/mod_video/crrc_graphics.cpp"
+  ],
+  "sessions": [
+    {
+      "metadata": "/65/10401442c8/0/metadata.json",
+      "transcript": "/65/10401442c8/0/full.jsonl",
+      "context": "/65/10401442c8/0/context.md",
+      "content_hash": "/65/10401442c8/0/content_hash.txt",
+      "prompt": "/65/10401442c8/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 14648,
+    "cache_creation_tokens": 12420429,
+    "cache_read_tokens": 1091625245,
+    "output_tokens": 1524045,
+    "api_call_count": 4886
+  }
+}
