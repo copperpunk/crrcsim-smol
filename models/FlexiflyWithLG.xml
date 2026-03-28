@@ -21,7 +21,7 @@ FlexiflyXLM with tricycle landing gear for ground-start SIL testing.
   </changelog>
   <aero version="1" units="1">
     <ref chord="0.14960092" span="1.00076" area="0.14814809" speed="19" />
-    <l Cl_b="-0.135825" Cl_p="-0.484121" Cl_r="0.166927" Cl_da="-0.25" Cl_dr="0.02" />
+    <l Cl_b="-0.135825" Cl_p="-0.484121" Cl_r="0.166927" Cl_da="0.25" Cl_dr="0.02" />
     <m Cm_a="-0.587625" Cm_q="-9.86444" Cm_0="0" Cm_de="-0.554186" />
     <n Cn_b="0.073321" Cn_p="-0.043168" Cn_r="-0.076957" Cn_da="0" Cn_dr="-0.041483" />
     <Y CY_b="-0.25642" CY_p="-0.084046" CY_r="0.231354" CY_da="0" CY_dr="0.101438" />

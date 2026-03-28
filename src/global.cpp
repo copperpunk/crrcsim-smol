@@ -50,4 +50,5 @@ TInputDev*        Global::inputDev;
 Aircraft*         Global::aircraft;
 FlightRecorder*   Global::recorder;
 Robots*           Global::robots;
+std::string       Global::flightModeString;
 pthread_mutex_t   Global::fdm_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;

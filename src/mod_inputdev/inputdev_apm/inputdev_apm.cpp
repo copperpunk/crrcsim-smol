@@ -206,9 +206,12 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
     }
 
     inputs->aileron  = actuator.aileron;
-    inputs->elevator = actuator.elevator;
+    inputs->elevator = -actuator.elevator;
     inputs->throttle = actuator.throttle;
-    inputs->rudder   = actuator.rudder;
+    inputs->rudder   = -actuator.rudder;
+
+    static const char* kModeNames[] = {"Manual", "Acro", "AttHold", "Cruise", "Auto"};
+    Global::flightModeString = actuator.mode <= 4 ? kModeNames[actuator.mode] : "???";
 
     if (Global::aircraft->getFDM() == NULL) {
         return true;

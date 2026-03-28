@@ -769,9 +769,31 @@ void display()
 
   }
 
+  // Overlay: flight mode indicator
+  if (!Global::flightModeString.empty())
+  {
+    GlOverlay::setupRenderingState(window_xsize, window_ysize);
+    int pad = 6;
+    int text_w = Global::flightModeString.length() * 10 + 2 * pad;
+    int text_h = 18 + 2 * pad;
+    int x0 = 10;
+    int y0 = window_ysize - text_h - 10;
+
+    glColor4f(0.0f, 0.0f, 0.0f, 0.7f);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glRectf(x0, y0, x0 + text_w, y0 + text_h);
+    glDisable(GL_BLEND);
+
+    glColor3f(0.0f, 1.0f, 0.4f);
+    FONT_HELVETICA_14.drawString(Global::flightModeString.c_str(),
+                                 x0 + pad, y0 + pad);
+    GlOverlay::restoreRenderingState();
+  }
+
   // Overlay: console
   console->render(window_xsize, window_ysize);
-  
+
   // Overlay: gui
   Global::gui->draw();
   

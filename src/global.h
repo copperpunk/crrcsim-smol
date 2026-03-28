@@ -98,6 +98,7 @@ class Global
     static Aircraft*        aircraft;       ///< A complete Aircraft (model & FDM).
     static FlightRecorder*  recorder;
     static Robots*          robots;
+    static std::string      flightModeString;
 
     static void lockFDM(void) { pthread_mutex_lock(&fdm_lock); }
     static void unlockFDM(void) { pthread_mutex_unlock(&fdm_lock); }
