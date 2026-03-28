@@ -777,25 +777,137 @@ void display()
 
   }
 
-  // Overlay: flight mode indicator
-  if (!Global::flightModeString.empty())
+  // Overlay: flight instruments (top-left)
   {
     GlOverlay::setupRenderingState(window_xsize, window_ysize);
-    int pad = 6;
-    int text_w = Global::flightModeString.length() * 10 + 2 * pad;
-    int text_h = 18 + 2 * pad;
-    int x0 = 10;
-    int y0 = window_ysize - text_h - 10;
-
-    glColor4f(0.0f, 0.0f, 0.0f, 0.7f);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glRectf(x0, y0, x0 + text_w, y0 + text_h);
-    glDisable(GL_BLEND);
+
+    double phi   = Global::aircraft->getFDM()->getPhi();
+    double theta = Global::aircraft->getFDM()->getTheta();
+    CRRCMath::Vector3 vel = Global::aircraft->getFDM()->getVel();
+    double alt_ft = Global::aircraft->getFDM()->getAlt();
+    double alt_m  = alt_ft * 0.3048;
+    double gnd_speed_ft = sqrt(vel.r[0]*vel.r[0] + vel.r[1]*vel.r[1]);
+    double gnd_speed_ms = gnd_speed_ft * 0.3048;
+    double cog_deg = atan2(vel.r[1], vel.r[0]) * 180.0 / M_PI;
+    if (cog_deg < 0) cog_deg += 360.0;
+
+    int margin = 10;
+    int ai_size = 80;
+    int ai_cx = margin + ai_size;
+    int ai_cy = window_ysize - margin - ai_size;
+
+    // Attitude indicator background
+    glColor4f(0.0f, 0.0f, 0.0f, 0.7f);
+    glRectf(ai_cx - ai_size, ai_cy - ai_size,
+            ai_cx + ai_size, ai_cy + ai_size);
+
+    // Clip to the AI square
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(ai_cx - ai_size, ai_cy - ai_size, ai_size * 2, ai_size * 2);
+
+    glPushMatrix();
+    glTranslatef(ai_cx, ai_cy, 0);
+
+    // Rotate for roll
+    float roll_deg = phi * 180.0 / M_PI;
+    glRotatef(roll_deg, 0, 0, 1);
+
+    // Sky/ground split offset by pitch
+    float pitch_px = -theta * (180.0 / M_PI) * (ai_size / 30.0);
+
+    // Sky (blue)
+    glColor3f(0.3f, 0.5f, 0.8f);
+    glRectf(-ai_size, pitch_px, ai_size, ai_size * 2);
+
+    // Ground (brown)
+    glColor3f(0.45f, 0.35f, 0.2f);
+    glRectf(-ai_size, -ai_size * 2, ai_size, pitch_px);
+
+    // Horizon line
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glLineWidth(2.0f);
+    glBegin(GL_LINES);
+    glVertex2f(-ai_size, pitch_px);
+    glVertex2f(ai_size, pitch_px);
+    glEnd();
+
+    // Pitch ladder (10-degree marks)
+    glLineWidth(1.0f);
+    for (int p = -30; p <= 30; p += 10)
+    {
+      if (p == 0) continue;
+      float y = pitch_px - p * (ai_size / 30.0);
+      float hw = (p % 20 == 0) ? 20.0f : 12.0f;
+      glBegin(GL_LINES);
+      glVertex2f(-hw, y);
+      glVertex2f(hw, y);
+      glEnd();
+    }
+
+    glPopMatrix();
+    glDisable(GL_SCISSOR_TEST);
+
+    // Aircraft reference (fixed wings + dot)
+    glColor3f(1.0f, 1.0f, 0.0f);
+    glLineWidth(2.0f);
+    glBegin(GL_LINES);
+    glVertex2f(ai_cx - 25, ai_cy);
+    glVertex2f(ai_cx - 8, ai_cy);
+    glVertex2f(ai_cx + 8, ai_cy);
+    glVertex2f(ai_cx + 25, ai_cy);
+    glEnd();
+    glPointSize(5.0f);
+    glBegin(GL_POINTS);
+    glVertex2f(ai_cx, ai_cy);
+    glEnd();
+    glLineWidth(1.0f);
+
+    // Text readouts (right of AI)
+    int tx = ai_cx + ai_size + 10;
+    int ty = ai_cy + ai_size - 16;
+    int line_h = 18;
 
     glColor3f(0.0f, 1.0f, 0.4f);
-    FONT_HELVETICA_14.drawString(Global::flightModeString.c_str(),
-                                 x0 + pad, y0 + pad);
+    char buf[64];
+
+    if (!Global::flightModeString.empty())
+    {
+      FONT_HELVETICA_14.drawString(Global::flightModeString.c_str(), tx, ty);
+      ty -= line_h;
+    }
+
+    ty -= 4;
+
+    snprintf(buf, sizeof(buf), "SPD  %5.1f m/s", gnd_speed_ms);
+    FONT_HELVETICA_14.drawString(buf, tx, ty);
+    ty -= line_h;
+
+    snprintf(buf, sizeof(buf), "ALT  %5.1f m", alt_m);
+    FONT_HELVETICA_14.drawString(buf, tx, ty);
+    ty -= line_h;
+
+    snprintf(buf, sizeof(buf), "COG  %5.1f\xb0", cog_deg);
+    FONT_HELVETICA_14.drawString(buf, tx, ty);
+    ty -= line_h + 4;
+
+    double pitch_deg = theta * 180.0 / M_PI;
+    double yaw_deg   = Global::aircraft->getFDM()->getPsi() * 180.0 / M_PI;
+    if (yaw_deg < 0) yaw_deg += 360.0;
+
+    snprintf(buf, sizeof(buf), "R  %+6.1f\xb0", (double)roll_deg);
+    FONT_HELVETICA_14.drawString(buf, tx, ty);
+    ty -= line_h;
+
+    snprintf(buf, sizeof(buf), "P  %+6.1f\xb0", pitch_deg);
+    FONT_HELVETICA_14.drawString(buf, tx, ty);
+    ty -= line_h;
+
+    snprintf(buf, sizeof(buf), "Y  %6.1f\xb0", yaw_deg);
+    FONT_HELVETICA_14.drawString(buf, tx, ty);
+
+    glDisable(GL_BLEND);
     GlOverlay::restoreRenderingState();
   }
 
