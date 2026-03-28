@@ -200,17 +200,9 @@ void EOM01::ls_step( SCALAR dt )
 /*  A N G U L A R   V E L O C I T I E S   A N D   P O S I T I O N S  */
 
 /* Integrate rotational accelerations to get velocities */
+/* Trapezoidal integration (matches quaternion and position integrators) */
 
-  v_R_omega_body = v_R_omega_body + (v_R_omega_dot_body*3 - v_R_omega_dot_body_past)*dth;
-  
-  // sanity check: v_R_omega_body.length() * dt < pi/2
-  {
-    double vRo_max = 0.5*M_PI / dt;
-    double vRo_len = v_R_omega_body.length();
-    
-    if (vRo_len > vRo_max)
-      v_R_omega_body *= vRo_max/vRo_len;
-  }
+  v_R_omega_body = v_R_omega_body + (v_R_omega_dot_body + v_R_omega_dot_body_past)*dth;
   
 /* Save past states */
   
