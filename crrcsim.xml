@@ -54,7 +54,7 @@
       <wind name_en="Heli (no wind)" velocity="0" direction="180" />
     </wind>
   </presets>
-  <location name="scenery/davis-orig.xml" sky="0" />
+  <location name="scenery/sil.xml" sky="0" />
   <locations>
     <location name="scenery/davis-orig.xml">
       <sky nUse="0" />

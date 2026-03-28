@@ -444,7 +444,7 @@ void initialize_scenegraph()
   
   // Some basic OpenGL setup
   sgVec4 skycol;
-  sgSetVec4 ( skycol, 0.0f, 0.0f, 0.0f, 1.0f ) ;
+  sgSetVec4 ( skycol, 0.53f, 0.75f, 0.93f, 1.0f ) ;
   glClearColor ( skycol[0], skycol[1], skycol[2], skycol[3] ) ;
 
   glEnable ( GL_DEPTH_TEST ) ;
@@ -527,7 +527,7 @@ void initialize_window(bool boFlatShading)
   ground[3] = -100.1;
   ShadowMatrix(ground,light,top_shadow_matrix);
 
-  glClearColor(0.0,0.0,0.0,1.0);
+  glClearColor(0.53,0.75,0.93,1.0);
   if (boFlatShading)
   {
     glShadeModel(GL_FLAT);
@@ -685,12 +685,14 @@ void display()
     // 3D scene: scenery
     Global::scenery->draw(Global::Simulation->getTotalTime());
   }
-  // Lighting setup. Only needed as long as there are
-  // non-SSG parts that modify the light sources.
-  sgVec4 lightamb;
-  sgSetVec4(lightamb , 0.2f, 0.2f, 0.2f, 1.0f);
+  // Lighting setup for SSG scene graph
+  sgVec4 lightamb, lightdif;
+  sgSetVec4(lightamb, 0.4f, 0.4f, 0.4f, 1.0f);
+  sgSetVec4(lightdif, 0.8f, 0.8f, 0.8f, 1.0f);
   ssgGetLight(0)->setPosition(lightposn);
   ssgGetLight(0)->setColour(GL_AMBIENT, lightamb);
+  ssgGetLight(0)->setColour(GL_DIFFUSE, lightdif);
+  ssgGetLight(0)->setColour(GL_SPECULAR, lightdif);
 
   // Draw the scenegraph (airplane model, shadow)
   ssgCullAndDraw(scene);

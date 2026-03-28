@@ -1,0 +1,118 @@
+AC3Db
+MATERIAL "hangar_walls" rgb 0.7 0.7 0.65  amb 0.7 0.7 0.65  emis 0 0 0  spec 0.5 0.5 0.5  shi 64  trans 0
+MATERIAL "hangar_roof" rgb 0.25 0.3 0.35  amb 0.25 0.3 0.35  emis 0 0 0  spec 0.5 0.5 0.5  shi 64  trans 0
+OBJECT world
+kids 2
+OBJECT poly
+name "walls"
+crease 45.0
+numvert 8
+-40.0 0 -30.0
+40.0 0 -30.0
+40.0 0 30.0
+-40.0 0 30.0
+40.0 25 -30.0
+-40.0 25 -30.0
+-40.0 25 30.0
+40.0 25 30.0
+numsurf 6
+SURF 0x20
+mat 0
+refs 4
+0 0 0
+1 1 0
+2 0 1
+3 1 1
+SURF 0x20
+mat 0
+refs 4
+4 0 0
+5 1 0
+6 0 1
+7 1 1
+SURF 0x20
+mat 0
+refs 4
+0 0 0
+1 1 0
+4 0 1
+5 1 1
+SURF 0x20
+mat 0
+refs 4
+2 0 0
+3 1 0
+6 0 1
+7 1 1
+SURF 0x20
+mat 0
+refs 4
+1 0 0
+2 1 0
+7 0 1
+4 1 1
+SURF 0x20
+mat 0
+refs 4
+3 0 0
+0 1 0
+5 0 1
+6 1 1
+kids 0
+OBJECT poly
+name "roof"
+loc 0 25 0
+crease 45.0
+numvert 8
+-42.0 0 -32.0
+42.0 0 -32.0
+42.0 0 32.0
+-42.0 0 32.0
+42.0 2 -32.0
+-42.0 2 -32.0
+-42.0 2 32.0
+42.0 2 32.0
+numsurf 6
+SURF 0x20
+mat 1
+refs 4
+0 0 0
+1 1 0
+2 0 1
+3 1 1
+SURF 0x20
+mat 1
+refs 4
+4 0 0
+5 1 0
+6 0 1
+7 1 1
+SURF 0x20
+mat 1
+refs 4
+0 0 0
+1 1 0
+4 0 1
+5 1 1
+SURF 0x20
+mat 1
+refs 4
+2 0 0
+3 1 0
+6 0 1
+7 1 1
+SURF 0x20
+mat 1
+refs 4
+1 0 0
+2 1 0
+7 0 1
+4 1 1
+SURF 0x20
+mat 1
+refs 4
+3 0 0
+0 1 0
+5 0 1
+6 1 1
+kids 0

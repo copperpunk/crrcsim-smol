@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+
+<crrcsimSceneryFile version="3">
+
+  <name>SIL Testing Field</name>
+  <categories>
+    <category>Field</category>
+  </categories>
+  <description>
+    <en>
+Large flat field with 100m grid and reference objects for SIL testing.
+6km x 6km terrain.
+    </en>
+  </description>
+  <changelog>
+    <change>
+      <date>2026-03-28</date>
+      <author>copperpunk</author>
+      <en>Created for smol SIL testing.</en>
+    </change>
+  </changelog>
+
+  <views>
+    <position name="default" north="-80" east="-40" height="6" />
+  </views>
+
+  <start>
+    <position name="runway" north="0" east="0" height="0" />
+  </start>
+
+  <default>
+    <wind velocity="0" direction="0" />
+  </default>
+
+  <sky type="original" texture="textures/clouds.rgb" radius="12000">
+    <descr_short>
+      <en>Sky dome</en>
+    </descr_short>
+  </sky>
+
+  <scene type="model-based" getHeight_mode="2">
+
+    <object filename="sil_terrain.ac" terrain="1">
+      <instance north="0" east="0" height="0" />
+    </object>
+
+    <object filename="sil_runway.ac" terrain="0">
+      <instance north="0" east="0" height="0" />
+    </object>
+
+    <!-- Reference objects scattered around the field -->
+
+    <!-- Barn: 500m north, 300m east -->
+    <object filename="sil_barn.ac" terrain="0">
+      <instance north="1640" east="984" height="0" h="20" />
+    </object>
+
+    <!-- Water tower: 800m north, 500m west -->
+    <object filename="sil_watertower.ac" terrain="0">
+      <instance north="2625" east="-1640" height="0" />
+    </object>
+
+    <!-- Silo: 400m south, 600m east -->
+    <object filename="sil_silo.ac" terrain="0">
+      <instance north="-1312" east="1968" height="0" />
+    </object>
+
+    <!-- Hangar: near the runway, 100m south -->
+    <object filename="sil_hangar.ac" terrain="0">
+      <instance north="-328" east="150" height="0" h="0" />
+    </object>
+
+    <!-- House: 1km north, 200m west -->
+    <object filename="sil_house.ac" terrain="0">
+      <instance north="3280" east="-656" height="0" h="45" />
+    </object>
+
+    <!-- Second barn: 600m south, 800m west -->
+    <object filename="sil_barn.ac" terrain="0">
+      <instance north="-1968" east="-2625" height="0" h="70" />
+    </object>
+
+    <!-- Second silo: near the first barn -->
+    <object filename="sil_silo.ac" terrain="0">
+      <instance north="1750" east="1100" height="0" />
+    </object>
+
+  </scene>
+</crrcsimSceneryFile>
