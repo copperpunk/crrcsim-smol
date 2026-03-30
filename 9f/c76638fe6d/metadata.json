@@ -1,0 +1,27 @@
+{
+  "cli_version": "dev",
+  "checkpoint_id": "9fc76638fe6d",
+  "strategy": "manual-commit",
+  "branch": "feat/indicated-airspeed",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "src/mod_inputdev/inputdev_apm/inputdev_apm.cpp",
+    "src/mod_inputdev/inputdev_apm/inputdev_apm.h"
+  ],
+  "sessions": [
+    {
+      "metadata": "/9f/c76638fe6d/0/metadata.json",
+      "transcript": "/9f/c76638fe6d/0/full.jsonl",
+      "context": "/9f/c76638fe6d/0/context.md",
+      "content_hash": "/9f/c76638fe6d/0/content_hash.txt",
+      "prompt": "/9f/c76638fe6d/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 20056,
+    "cache_creation_tokens": 15279903,
+    "cache_read_tokens": 1336223682,
+    "output_tokens": 1824059,
+    "api_call_count": 6007
+  }
+}
