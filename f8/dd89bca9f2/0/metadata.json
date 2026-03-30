@@ -1,0 +1,31 @@
+{
+  "cli_version": "dev",
+  "checkpoint_id": "f8dd89bca9f2",
+  "session_id": "10209659-2a3f-4a89-9aa4-a6b60e747390",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-30T19:09:28.148743262Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "src/mod_inputdev/inputdev_apm/sil-protocol"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "42c19652ad4d",
+  "token_usage": {
+    "input_tokens": 20079,
+    "cache_creation_tokens": 15554915,
+    "cache_read_tokens": 1340039101,
+    "output_tokens": 1826078,
+    "api_call_count": 6023
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-30T19:09:10.974204108Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 0,
+    "agent_percentage": 0
+  },
+  "transcript_path": ".claude/projects/-home-ubuntu-Documents-Github-smol/10209659-2a3f-4a89-9aa4-a6b60e747390.jsonl"
+}
