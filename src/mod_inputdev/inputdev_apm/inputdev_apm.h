@@ -64,10 +64,10 @@ private:
                 float alt_m, float vn, float ve, float vd);
    void sendMag(float time_sec, float hx, float hy, float hz);
    void sendBaro(float time_sec, float alt_m, float press_pa, float temp_C);
-   void sendAirspeed(float time_sec, float airspeed_mps);
+   void sendAirspeed(float time_sec, float indicated_airspeed_mps);
    void sendTruth(float time_sec, double lat_deg, double lon_deg,
                   float alt_m, float vn, float ve, float vd,
-                  float phi, float theta, float psi, float airspeed_mps);
+                  float phi, float theta, float psi, float indicated_airspeed_mps);
    void sendRc(float time_sec);
 
    float gaussNoise(float sigma);
@@ -81,6 +81,7 @@ private:
    NoiseConfig       _noise;
    BiasConfig        _bias;
 
+   float             _density_ratio = 1.0f;
    bool              _wmm_initialized;
    double            _earth_field_ned[3]; // Gauss, NED
    double            _origin_lat_rad;

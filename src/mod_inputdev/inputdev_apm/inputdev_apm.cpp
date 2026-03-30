@@ -247,8 +247,9 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
     float q = static_cast<float>(pqr.r[1]);
     float r = static_cast<float>(pqr.r[2]);
 
-    float airspeed_mps = static_cast<float>(
+    float true_airspeed_mps = static_cast<float>(
         Global::aircraft->getFDM()->getVRelAirmass() * FEET2METERS);
+    float indicated_airspeed_mps = true_airspeed_mps * sqrtf(_density_ratio);
 
     sendImu(time_sec,
             ax + _bias.accel_x + gaussNoise(_noise.accel_sigma),
@@ -260,7 +261,7 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
 
     sendTruth(time_sec, lat_deg, lon_deg, alt_m, vn, ve, vd,
               static_cast<float>(phi), static_cast<float>(theta),
-              static_cast<float>(psi), airspeed_mps);
+              static_cast<float>(psi), indicated_airspeed_mps);
 
     // RC input comes from external joystick publisher, not from sim
     // sendRc(time_sec);
@@ -306,6 +307,7 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
     if (_cycle % 4 == 0) {
         double sigma, v_sound, t_amb_r, p_amb_psf;
         ls_atmos(alt_ft, &sigma, &v_sound, &t_amb_r, &p_amb_psf);
+        _density_ratio = static_cast<float>(sigma);
         float press_pa = static_cast<float>(p_amb_psf * PSF_TO_PA);
         float temp_C = static_cast<float>(t_amb_r / 1.8 - 273.15);
         float baro_alt = alt_m + _bias.baro_alt + gaussNoise(_noise.baro_alt_sigma);
@@ -329,7 +331,7 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
     }
 
     if (_cycle % 10 == 0) {
-        sendAirspeed(time_sec, airspeed_mps + gaussNoise(_noise.airspeed_sigma));
+        sendAirspeed(time_sec, indicated_airspeed_mps + gaussNoise(_noise.airspeed_sigma));
     }
 
     _cycle++;
@@ -396,20 +398,20 @@ void T_TX_InterfaceAPM::sendBaro(float time_sec, float alt_m, float press_pa,
     input->send_msg(&msg, sizeof(msg));
 }
 
-void T_TX_InterfaceAPM::sendAirspeed(float time_sec, float airspeed_mps)
+void T_TX_InterfaceAPM::sendAirspeed(float time_sec, float indicated_airspeed_mps)
 {
     SimAirspeedMsg msg = {};
     msg.header.msg_type = SIM_MSG_AIRSPEED;
     msg.header.payload_len = sizeof(SimAirspeedMsg) - sizeof(SimMsgHeader);
     msg.time_sec = time_sec;
-    msg.airspeed_mps = airspeed_mps;
+    msg.indicated_airspeed_mps = indicated_airspeed_mps;
     input->send_msg(&msg, sizeof(msg));
 }
 
 void T_TX_InterfaceAPM::sendTruth(float time_sec, double lat_deg, double lon_deg,
                                    float alt_m, float vn, float ve, float vd,
                                    float phi, float theta, float psi,
-                                   float airspeed_mps)
+                                   float indicated_airspeed_mps)
 {
     SimTruthMsg msg = {};
     msg.header.msg_type = SIM_MSG_TRUTH;
@@ -424,7 +426,7 @@ void T_TX_InterfaceAPM::sendTruth(float time_sec, double lat_deg, double lon_deg
     msg.phi = phi;
     msg.theta = theta;
     msg.psi = psi;
-    msg.airspeed_mps = airspeed_mps;
+    msg.indicated_airspeed_mps = indicated_airspeed_mps;
     input->send_msg(&msg, sizeof(msg));
 }
 
