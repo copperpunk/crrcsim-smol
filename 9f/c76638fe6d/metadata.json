@@ -6,7 +6,8 @@
   "checkpoints_count": 1,
   "files_touched": [
     "src/mod_inputdev/inputdev_apm/inputdev_apm.cpp",
-    "src/mod_inputdev/inputdev_apm/inputdev_apm.h"
+    "src/mod_inputdev/inputdev_apm/inputdev_apm.h",
+    "src/mod_inputdev/inputdev_apm/sil-protocol"
   ],
   "sessions": [
     {
@@ -18,10 +19,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 20056,
-    "cache_creation_tokens": 15279903,
-    "cache_read_tokens": 1336223682,
-    "output_tokens": 1824059,
-    "api_call_count": 6007
+    "input_tokens": 20062,
+    "cache_creation_tokens": 15552196,
+    "cache_read_tokens": 1337035894,
+    "output_tokens": 1824646,
+    "api_call_count": 6012
   }
 }

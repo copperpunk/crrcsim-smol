@@ -3,29 +3,30 @@
   "checkpoint_id": "9fc76638fe6d",
   "session_id": "10209659-2a3f-4a89-9aa4-a6b60e747390",
   "strategy": "manual-commit",
-  "created_at": "2026-03-30T16:50:27.118301635Z",
+  "created_at": "2026-03-30T19:02:24.372584912Z",
   "branch": "feat/indicated-airspeed",
   "checkpoints_count": 1,
   "files_touched": [
+    "src/mod_inputdev/inputdev_apm/inputdev_apm.cpp",
     "src/mod_inputdev/inputdev_apm/inputdev_apm.h",
-    "src/mod_inputdev/inputdev_apm/inputdev_apm.cpp"
+    "src/mod_inputdev/inputdev_apm/sil-protocol"
   ],
   "agent": "Claude Code",
   "turn_id": "bdb7701244ef",
   "token_usage": {
-    "input_tokens": 20056,
-    "cache_creation_tokens": 15279903,
-    "cache_read_tokens": 1336223682,
-    "output_tokens": 1824059,
-    "api_call_count": 6007
+    "input_tokens": 20062,
+    "cache_creation_tokens": 15552196,
+    "cache_read_tokens": 1337035894,
+    "output_tokens": 1824646,
+    "api_call_count": 6012
   },
   "initial_attribution": {
-    "calculated_at": "2026-03-30T16:50:09.869639058Z",
+    "calculated_at": "2026-03-30T19:02:07.344625534Z",
     "agent_lines": 0,
-    "human_added": 3,
-    "human_modified": 9,
+    "human_added": 0,
+    "human_modified": 0,
     "human_removed": 0,
-    "total_committed": 3,
+    "total_committed": 0,
     "agent_percentage": 0
   },
   "transcript_path": ".claude/projects/-home-ubuntu-Documents-Github-smol/10209659-2a3f-4a89-9aa4-a6b60e747390.jsonl"
