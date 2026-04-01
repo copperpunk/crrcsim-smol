@@ -84,6 +84,9 @@ If you'd like to help with CRRCSIM, then send me an email!
 #include "mod_main/eventhandler.h"
 #include "mod_main/crrc_checkopts.h"
 
+#include <chrono>
+#include <thread>
+
 #include "mod_inputdev/inputdev_serial2/inputdev_serial2.h"
 #include "mod_inputdev/inputdev_mnav/inputdev_mnav.h"
 #include "mod_inputdev/inputdev_apm/inputdev_apm.h"
@@ -644,7 +647,14 @@ static void *fdm_thread(void *)
     Global::Simulation->incSimSteps(1);
     Global::unlockFDM();
 
+    using clock = std::chrono::steady_clock;
+    const auto period = std::chrono::duration_cast<clock::duration>(
+        std::chrono::duration<double>(Global::dt));
+    auto next_cycle = clock::now();
+
     while (fdm_thread_running) {
+        next_cycle += period;
+
         Global::lockFDM();
         if (Global::TXInterface != NULL &&
             Global::TXInterface->getInputData(&Global::inputs)) {
@@ -652,7 +662,8 @@ static void *fdm_thread(void *)
             Global::Simulation->incSimSteps(1);
         }
         Global::unlockFDM();
-        usleep((useconds_t)(Global::dt * 1000000));
+
+        std::this_thread::sleep_until(next_cycle);
     }
     return NULL;
 }
