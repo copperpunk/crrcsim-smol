@@ -85,6 +85,7 @@ If you'd like to help with CRRCSIM, then send me an email!
 #include "mod_main/crrc_checkopts.h"
 
 #include <chrono>
+#include <csignal>
 #include <thread>
 
 #include "mod_inputdev/inputdev_serial2/inputdev_serial2.h"
@@ -113,7 +114,20 @@ If you'd like to help with CRRCSIM, then send me an email!
 #include <pthread.h>
 #include <unistd.h>
 
-static volatile bool fdm_thread_running = true;
+static volatile sig_atomic_t fdm_thread_running = 1;
+
+static void sigint_handler(int)
+{
+    static volatile sig_atomic_t caught = 0;
+    if (caught++) {
+        signal(SIGINT, SIG_DFL);
+        raise(SIGINT);
+        return;
+    }
+    fdm_thread_running = 0;
+    if (Global::Simulation)
+        Global::Simulation->quit();
+}
 
 //#define LOG_FRAMES
 
@@ -779,9 +793,8 @@ int main(int argc,char **argv)
         //   video.enabled and sound.enabled based on command line options
         if (cfgfile->getInt("video.enabled", 1))
           SDLFlags |= SDL_INIT_VIDEO;
-        if (cfgfile->getInt("sound.enabled", 1))
-          SDLFlags |= SDL_INIT_AUDIO;
         SDL_Init(SDLFlags);
+        signal(SIGINT, sigint_handler);
         SDL_EnableUNICODE(1); // We need this to pass keys to pui
         SDL_EnableKeyRepeat(50, 150);
         
@@ -805,29 +818,7 @@ int main(int argc,char **argv)
         if (cfgfile->getInt("video.enabled", 1))
           Video::setWindowTitleString();
 
-        // ***** Sound **********************************************************
-        if (cfgfile->getInt("sound.enabled", 1))
-        {
-          try
-          {
-            Global::soundserver = new CRRCAudioServer(cfgfile);
-            // init the variometer sound
-            cfgfile->makeSureAttributeExists("sound.variometer.vol", "0");
-            int vario_sound_volume = cfgfile->getInt("sound.variometer.vol") << 3;
-            vario_sound = new T_VariometerSound(Global::soundserver->getAudioSpec());
-            vario_sound_channel = Global::soundserver->playSample((T_SoundSample*)vario_sound, vario_sound_volume);
-            soundUpdate3D(0.0, 0.0, 0.0, 0.0);
-
-            Global::soundserver->pause();
-          }
-          catch (std::runtime_error& e)
-          {
-            fprintf(stderr, "%s\n", e.what());
-            Global::soundserver = (CRRCAudioServer*)0;
-          }
-        }
-        else
-          Global::soundserver = (CRRCAudioServer*)0;
+        Global::soundserver = (CRRCAudioServer*)0;
 
         // ***** Video **********************************************************
 
@@ -1089,7 +1080,7 @@ int main(int argc,char **argv)
     crrc_exit(CRRC_EXIT_FAILURE, s.c_str());
   }
 
-  fdm_thread_running = false;
+  fdm_thread_running = 0;
   pthread_join(fdm_thread_id, NULL);
 
   delete fdmenv;
