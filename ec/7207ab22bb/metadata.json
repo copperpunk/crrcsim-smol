@@ -3,7 +3,7 @@
   "checkpoint_id": "ec7207ab22bb",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 2,
   "files_touched": [
     "src/crrc_main.cpp",
     "src/mod_landscape/crrc_scenery.h"
@@ -15,13 +15,20 @@
       "context": "/ec/7207ab22bb/0/context.md",
       "content_hash": "/ec/7207ab22bb/0/content_hash.txt",
       "prompt": "/ec/7207ab22bb/0/prompt.txt"
+    },
+    {
+      "metadata": "/ec/7207ab22bb/1/metadata.json",
+      "transcript": "/ec/7207ab22bb/1/full.jsonl",
+      "context": "/ec/7207ab22bb/1/context.md",
+      "content_hash": "/ec/7207ab22bb/1/content_hash.txt",
+      "prompt": "/ec/7207ab22bb/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 29573,
-    "cache_creation_tokens": 16616485,
-    "cache_read_tokens": 1431858112,
-    "output_tokens": 1981152,
-    "api_call_count": 6483
+    "input_tokens": 54298,
+    "cache_creation_tokens": 29072915,
+    "cache_read_tokens": 2368339839,
+    "output_tokens": 3482740,
+    "api_call_count": 11206
   }
 }
