@@ -906,9 +906,9 @@ int main(int argc,char **argv)
     if (cfgfile->getInt("video.enabled", 1))
     {
       load_initial_scenery(cfg);
+      cfg->read(cfgfile);
       Video::setWindowTitleString();
     }
-    cfg->read(cfgfile);
     player_pos = Global::scenery->getPlayerPosition();
     Init_mod_windfield();
     
