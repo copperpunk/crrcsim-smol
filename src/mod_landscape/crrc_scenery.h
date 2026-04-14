@@ -207,10 +207,17 @@ class SceneryNull : public Scenery
     SceneryNull(int sky_variant = 0) : Scenery(NULL, sky_variant) {}
   
     float getHeight(float x, float z){return 0;}
-    float getHeightAndPlane(float x, float z, float tplane[4]){return 0;}
+    float getHeightAndPlane(float x, float z, float tplane[4]){
+      tplane[0] = 0; tplane[1] = 1; tplane[2] = 0; tplane[3] = 0;
+      return 0;
+    }
     int getID() {return 0;}
     void getWindComponents(double X_cg,double  Y_cg,double  Z_cg,
-    float  *x_wind_velocity, float  *y_wind_velocity, float  *z_wind_velocity){}
+    float  *x_wind_velocity, float  *y_wind_velocity, float  *z_wind_velocity){
+      *x_wind_velocity = 0;
+      *y_wind_velocity = 0;
+      *z_wind_velocity = 0;
+    }
     void draw(double current_time){};
     
     CRRCMath::Vector3 getPlayerPosition(int num){ return CRRCMath::Vector3(0.,0., 0.);}

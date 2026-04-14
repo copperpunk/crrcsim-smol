@@ -756,7 +756,7 @@ int main(int argc,char **argv)
     initializeRandomNumberGenerator();
 
     {
-      unsigned int SDLFlags = SDL_INIT_JOYSTICK;
+      unsigned int SDLFlags = SDL_INIT_JOYSTICK | SDL_INIT_TIMER;
       int nRetCodeCmdline;
       int i;
 
@@ -822,8 +822,9 @@ int main(int argc,char **argv)
 
         // ***** Video **********************************************************
 
-        Video::initialize_scenegraph();
-        Global::scenery  = new SceneryNull();/*Temporarily an empty scenery. 
+        if (cfgfile->getInt("video.enabled", 1))
+          Video::initialize_scenegraph();
+        Global::scenery  = new SceneryNull();/*Temporarily an empty scenery.
                     It allows to have a graphic context to display a message
                     during the load of the configured scenery.*/
 
@@ -891,7 +892,8 @@ int main(int argc,char **argv)
     //~ nVerbosity = 3;
     crrc_time = new CTime(cfgfile);
     
-    Video::initConsole();
+    if (cfgfile->getInt("video.enabled", 1))
+      Video::initConsole();
     
 #ifdef LOG_FRAMES
     FILE* fp = fopen("frames.dat", "w");
@@ -901,12 +903,12 @@ int main(int argc,char **argv)
     }
 #endif
    //load configured scenery or default scenery
-    load_initial_scenery(cfg);
-    cfg->read(cfgfile);
     if (cfgfile->getInt("video.enabled", 1))
     {
+      load_initial_scenery(cfg);
       Video::setWindowTitleString();
     }
+    cfg->read(cfgfile);
     player_pos = Global::scenery->getPlayerPosition();
     Init_mod_windfield();
     
@@ -928,11 +930,19 @@ int main(int argc,char **argv)
 
     while (Global::Simulation->getState() != STATE_EXIT)
     {
+      // Headless mode: FDM thread handles physics + sensor I/O.
+      // Main loop just sleeps until exit (SIGINT).
+      if (!Global::gui)
+      {
+        SDL_Delay(100);
+        continue;
+      }
+
       crrc_time->update();
       scheduler.Run();
 
       raiseInputEvent(Global::inputs);
-      
+
       if (Global::training_mode)
       {
         Global::inputs.heli_fixed_z = -Global::scenery->getPlayerPosition().r[1];
@@ -945,11 +955,11 @@ int main(int argc,char **argv)
       Global::Simulation->doIdle(&Global::inputs);
 
       Global::inputs.ClearKeys();
-      
+
       // random data
       {
         CRRC_Random::insertData(SDL_GetTicks());
-        CRRC_Random::insertData(Global::inputs.getRandNum());                   
+        CRRC_Random::insertData(Global::inputs.getRandNum());
       }
 
       // get aircraft position from FDM
@@ -958,7 +968,7 @@ int main(int argc,char **argv)
                                      -1 * vFdmPos.r[2],
                                           vFdmPos.r[1]);
       float  distance_to_model = (vAircraftPos - player_pos).length();
-      
+
       field_of_view = zoom_calc(distance_to_model);
       if (Global::gui)
       {
