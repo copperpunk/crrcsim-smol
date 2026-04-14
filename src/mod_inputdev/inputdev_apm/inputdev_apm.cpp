@@ -76,26 +76,26 @@ int T_TX_InterfaceAPM::init(SimpleXMLTransfer* config)
         printf("smol protocol: loading sensor model from %s\n", sensor_model_path.c_str());
         SimpleXMLTransfer sensor_cfg(sensor_model_path);
 
-        _noise.enabled     = sensor_cfg.getInt("apm.noise.enabled", 1) != 0;
-        _noise.accel_sigma = sensor_cfg.getDouble("apm.noise.accel_sigma", 0.035);
-        _noise.gyro_sigma  = sensor_cfg.getDouble("apm.noise.gyro_sigma", 0.001);
-        _noise.gps_pos_sigma = sensor_cfg.getDouble("apm.noise.gps_pos_sigma", 0.5);
-        _noise.gps_vel_sigma = sensor_cfg.getDouble("apm.noise.gps_vel_sigma", 0.1);
-        _noise.mag_sigma   = sensor_cfg.getDouble("apm.noise.mag_sigma", 0.005);
-        _noise.baro_alt_sigma = sensor_cfg.getDouble("apm.noise.baro_alt_sigma", 0.3);
-        _noise.airspeed_sigma = sensor_cfg.getDouble("apm.noise.airspeed_sigma", 0.1);
+        _noise.enabled     = sensor_cfg.getInt("noise.enabled", 1) != 0;
+        _noise.accel_sigma = sensor_cfg.getDouble("noise.accel_sigma", 0.035);
+        _noise.gyro_sigma  = sensor_cfg.getDouble("noise.gyro_sigma", 0.001);
+        _noise.gps_pos_sigma = sensor_cfg.getDouble("noise.gps_pos_sigma", 0.5);
+        _noise.gps_vel_sigma = sensor_cfg.getDouble("noise.gps_vel_sigma", 0.1);
+        _noise.mag_sigma   = sensor_cfg.getDouble("noise.mag_sigma", 0.005);
+        _noise.baro_alt_sigma = sensor_cfg.getDouble("noise.baro_alt_sigma", 0.3);
+        _noise.airspeed_sigma = sensor_cfg.getDouble("noise.airspeed_sigma", 0.1);
         printf("  noise %s\n", _noise.enabled ? "enabled" : "disabled");
 
-        _bias.accel_x  = sensor_cfg.getDouble("apm.bias.accel_x", 0.0);
-        _bias.accel_y  = sensor_cfg.getDouble("apm.bias.accel_y", 0.0);
-        _bias.accel_z  = sensor_cfg.getDouble("apm.bias.accel_z", 0.0);
-        _bias.gyro_x   = sensor_cfg.getDouble("apm.bias.gyro_x", 0.0);
-        _bias.gyro_y   = sensor_cfg.getDouble("apm.bias.gyro_y", 0.0);
-        _bias.gyro_z   = sensor_cfg.getDouble("apm.bias.gyro_z", 0.0);
-        _bias.mag_x    = sensor_cfg.getDouble("apm.bias.mag_x", 0.0);
-        _bias.mag_y    = sensor_cfg.getDouble("apm.bias.mag_y", 0.0);
-        _bias.mag_z    = sensor_cfg.getDouble("apm.bias.mag_z", 0.0);
-        _bias.baro_alt = sensor_cfg.getDouble("apm.bias.baro_alt", 0.0);
+        _bias.accel_x  = sensor_cfg.getDouble("bias.accel_x", 0.0);
+        _bias.accel_y  = sensor_cfg.getDouble("bias.accel_y", 0.0);
+        _bias.accel_z  = sensor_cfg.getDouble("bias.accel_z", 0.0);
+        _bias.gyro_x   = sensor_cfg.getDouble("bias.gyro_x", 0.0);
+        _bias.gyro_y   = sensor_cfg.getDouble("bias.gyro_y", 0.0);
+        _bias.gyro_z   = sensor_cfg.getDouble("bias.gyro_z", 0.0);
+        _bias.mag_x    = sensor_cfg.getDouble("bias.mag_x", 0.0);
+        _bias.mag_y    = sensor_cfg.getDouble("bias.mag_y", 0.0);
+        _bias.mag_z    = sensor_cfg.getDouble("bias.mag_z", 0.0);
+        _bias.baro_alt = sensor_cfg.getDouble("bias.baro_alt", 0.0);
         printf("  biases accel(%.3f,%.3f,%.3f) gyro(%.4f,%.4f,%.4f) "
                "mag(%.3f,%.3f,%.3f) baro(%.1f)\n",
                _bias.accel_x, _bias.accel_y, _bias.accel_z,
@@ -103,8 +103,8 @@ int T_TX_InterfaceAPM::init(SimpleXMLTransfer* config)
                _bias.mag_x, _bias.mag_y, _bias.mag_z,
                _bias.baro_alt);
 
-        double origin_lat_deg = sensor_cfg.getDouble("apm.origin.latitude_deg", 0.0);
-        double origin_lon_deg = sensor_cfg.getDouble("apm.origin.longitude_deg", 0.0);
+        double origin_lat_deg = sensor_cfg.getDouble("origin.latitude_deg", 0.0);
+        double origin_lon_deg = sensor_cfg.getDouble("origin.longitude_deg", 0.0);
         _origin_lat_rad = origin_lat_deg * M_PI / 180.0;
         _origin_lon_rad = origin_lon_deg * M_PI / 180.0;
         printf("  origin (%.6f, %.6f)\n", origin_lat_deg, origin_lon_deg);
