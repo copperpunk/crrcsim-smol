@@ -7579,3 +7579,23 @@ I think the waggle should only happen on the rising edge of an arm command. that
 
 let's go
 
+### Prompt 1215
+
+We need to fix CRRCSim first. In hand-launch mode, the spawn point needs to be different. it needs to be several feet in the air, and the drone needs to stay there until the user presses "L".
+
+### Prompt 1216
+
+[Request interrupted by user for tool use]
+
+### Prompt 1217
+
+We need the physics to still be running, otherwise our EKF will be confused. We can't throw the aircraft at t=0, because that wouldn't be a representative situation. the EKF never has to start while in motion
+
+### Prompt 1218
+
+[Request interrupted by user]
+
+### Prompt 1219
+
+Could we add a platform in CRRCSim for the vehicle to spawn on top of? essentially a "mini runway"?
+

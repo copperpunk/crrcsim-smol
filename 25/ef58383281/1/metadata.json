@@ -3,35 +3,37 @@
   "checkpoint_id": "25ef58383281",
   "session_id": "39fec811-543b-4ecb-8e75-7a1134fc20c4",
   "strategy": "manual-commit",
-  "created_at": "2026-04-16T22:26:36.808709766Z",
+  "created_at": "2026-04-16T22:41:20.609389851Z",
   "branch": "feat/hand-launch-mode",
   "checkpoints_count": 0,
   "files_touched": [
-    "src/global.cpp",
-    "src/global.h",
+    "src/crrc_fdm.cpp",
     "src/crrc_keyboard.cpp",
     "src/crrc_main.cpp",
-    "src/crrc_main.h"
+    "src/crrc_main.h",
+    "src/global.cpp",
+    "src/global.h",
+    "justfile"
   ],
   "agent": "Claude Code",
-  "turn_id": "828505f0dcc1",
+  "turn_id": "3339bf093034",
   "transcript_identifier_at_start": "b41e6c8b-1c60-4002-8355-3e250435d1a5",
-  "checkpoint_transcript_start": 23826,
-  "transcript_lines_at_start": 23826,
+  "checkpoint_transcript_start": 26080,
+  "transcript_lines_at_start": 26080,
   "token_usage": {
-    "input_tokens": 691,
-    "cache_creation_tokens": 1234815,
-    "cache_read_tokens": 88912420,
-    "output_tokens": 179300,
-    "api_call_count": 541
+    "input_tokens": 45,
+    "cache_creation_tokens": 42850,
+    "cache_read_tokens": 7112064,
+    "output_tokens": 23039,
+    "api_call_count": 30
   },
   "initial_attribution": {
-    "calculated_at": "2026-04-16T22:26:23.975684845Z",
+    "calculated_at": "2026-04-16T22:41:08.299307082Z",
     "agent_lines": 0,
-    "human_added": 76,
+    "human_added": 22,
     "human_modified": 3,
     "human_removed": 0,
-    "total_committed": 76,
+    "total_committed": 22,
     "agent_percentage": 0
   },
   "transcript_path": ".claude/projects/-home-ubuntu-Documents-Github-smol/39fec811-543b-4ecb-8e75-7a1134fc20c4.jsonl"
