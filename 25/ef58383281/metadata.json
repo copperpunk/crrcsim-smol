@@ -5,6 +5,8 @@
   "branch": "feat/hand-launch-mode",
   "checkpoints_count": 1,
   "files_touched": [
+    "justfile",
+    "src/crrc_fdm.cpp",
     "src/crrc_keyboard.cpp",
     "src/crrc_main.cpp",
     "src/crrc_main.h",
