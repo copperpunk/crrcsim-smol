@@ -100,6 +100,20 @@ class Global
     static Robots*          robots;
     static std::string      flightModeString;
 
+    static bool             hand_launch_mode;    ///< true when CRRCSIM_LAUNCH_MODE=hand
+    static bool             hand_launch_thrown;  ///< true after the pilot presses the launch key
+    static double           hand_launch_velocity_rel;  ///< velocity_rel applied on throw
+    static double           hand_launch_phi;
+    static double           hand_launch_theta;
+    static double           hand_launch_psi;
+    static double           hand_launch_posX;
+    static double           hand_launch_posY;
+    static double           hand_launch_altitude;
+    static double           hand_launch_dZRot;
+    static constexpr float  hand_launch_platform_height_ft = 6.0f;  ///< virtual platform AGL [ft]
+    static constexpr float  hand_launch_platform_radius_ft = 4.0f;  ///< virtual platform extent [ft]
+    static double           hand_launch_throw_velocity_mps;         ///< throw velocity [m/s]
+
     static void lockFDM(void) { pthread_mutex_lock(&fdm_lock); }
     static void unlockFDM(void) { pthread_mutex_unlock(&fdm_lock); }
 

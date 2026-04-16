@@ -78,6 +78,7 @@
 // Functions define inside crrc_main.c and used in- or outside crrc_main.c :
 
 void initialize_flight_model();
+void throw_hand_launched_aircraft();
 void set_aux(int aux_num, int setting);
 void activate_test_mode();
 void leave_test_mode();

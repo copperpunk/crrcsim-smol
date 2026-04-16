@@ -42,9 +42,20 @@ CRRC_FDM_Env::CRRC_FDM_Env(SimpleXMLTransfer* cfg)
 
 float CRRC_FDM_Env::GetSceneryHeight(float x_north, float y_east)
 {
-  return(
-         Global::scenery->getHeight(x_north, y_east)
-         );
+  float terrain_height = Global::scenery->getHeight(x_north, y_east);
+  if (Global::hand_launch_mode && !Global::hand_launch_thrown)
+  {
+    const float dx = x_north - static_cast<float>(Global::hand_launch_posX);
+    const float dy = y_east  - static_cast<float>(Global::hand_launch_posY);
+    const float r2 = Global::hand_launch_platform_radius_ft
+                   * Global::hand_launch_platform_radius_ft;
+    if (dx * dx + dy * dy < r2)
+    {
+      const float platform_top = terrain_height + Global::hand_launch_platform_height_ft;
+      return platform_top;
+    }
+  }
+  return terrain_height;
 }
 
 int CRRC_FDM_Env::CalculateWind(double  X_cg,      double  Y_cg,     double  Z_cg,

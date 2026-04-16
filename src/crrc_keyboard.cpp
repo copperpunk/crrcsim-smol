@@ -148,6 +148,10 @@ void key_down(SDL_keysym *keysym)
           Video::cycleCameraMode();
           break;
 
+        case SDLK_l:
+          throw_hand_launched_aircraft();
+          break;
+
         case KEY_ZOOM_IN:
           if (Global::inputDev->zoom_control == TInputDev::KEYBOARD)
           {

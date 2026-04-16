@@ -6,6 +6,9 @@ build:
 run: build
     ./crrcsim
 
+run-hand: build
+    CRRCSIM_LAUNCH_MODE=hand CRRCSIM_HAND_LAUNCH_VEL_MPS=10 ./crrcsim
+
 # Build and run under gdb
 debug: build
     gdb -ex run -ex bt -ex quit ./crrcsim
