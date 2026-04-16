@@ -220,7 +220,8 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
     float time_sec = static_cast<float>(Global::dt * Global::Simulation->SimSteps());
 
     double lat_rad = Global::aircraft->getFDM()->getLat() + _origin_lat_rad;
-    double lon_rad = Global::aircraft->getFDM()->getLon() + _origin_lon_rad;
+    double fdm_lon = Global::aircraft->getFDM()->getLon();
+    double lon_rad = fdm_lon / cos(_origin_lat_rad) + _origin_lon_rad;
     double alt_ft  = Global::aircraft->getFDM()->getAlt();
     double lat_deg = lat_rad * RAD_TO_DEG;
     double lon_deg = lon_rad * RAD_TO_DEG;

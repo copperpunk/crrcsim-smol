@@ -256,7 +256,7 @@ void initialize_flight_model()
   float plane[4];
   phi = 0;
   theta = cfgfile->getDouble("launch.angle", 0);
-  psi = wind_direction;
+  psi = wind_direction + cfgfile->getDouble("launch.heading_offset", 0) * M_PI / 180.0;
   Altitude = cfgfile->getDouble("launch.altitude", 6);
   double zlow = Global::aircraft->getFDM()->getZLow();
   height = Global::scenery->getHeightAndPlane(posX, posY, plane);
