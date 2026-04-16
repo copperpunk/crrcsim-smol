@@ -25744,3 +25744,2773 @@ We own the crrcsim repo. it's a fork. we can make any changes we want to that so
 ---
 
 Excellent, commit those changes to the crrcsim repo and push. Then I need to test a replay on the FC3v2 board and make sure the code changes don't cause any loop overruns
+
+---
+
+what command do I use to test the timing?
+
+---
+
+something is wrong:
+Reading flight log: /home/ubuntu/Documents/Github/smol/validation/reference/flight.bin
+  2697 snapshots (27.0s)
+
+Opening /dev/ttyACM0...
+Waiting for board...
+  [board] Starting flight loop
+Board ready
+Streaming 2697 cycles...
+  [board] Flight started
+  1000/2697 cycles, 998 snapshots
+  2000/2697 cycles, 1999 snapshots
+Waiting for flight completion...
+  [board] DIAG: steps=2697, overflows=0, pops=2698, overruns=1
+Received 2698 snapshots
+Saved to /home/ubuntu/Documents/Github/smol/validation/reference/results/flight/board.bin
+
+RMS comparison vs flight.truth:
+  north_m: 339766.904  (bound: 0.5)  [FAIL]
+  east_m: 842770.687  (bound: 0.5)  [FAIL]
+  altitude_m: 0.298  (bound: 2.0)  [OK]
+  vn_mps: 0.141  (bound: 0.5)  [OK]
+  ve_mps: 0.170  (bound: 0.5)  [OK]
+  vd_mps: 0.081  (bound: 0.5)  [OK]
+  phi_deg: 1.213  (bound: 2.0)  [OK]
+  theta_deg: 0.931  (bound: 2.0)  [OK]
+  psi_deg: 6.048  (bound: 15.0)  [OK]
+
+FAILED — RMS bounds exceeded:
+  north_m: 339766.904 >= 0.5
+  east_m: 842770.687 >= 0.5
+error: Recipe `test-board` failed on line 97 with exit code 1
+
+---
+
+The hil_replay script doesn't show any timing information. I would like a statistical breakdown of the loop intervals to be displayed, even if there aren't any overruns
+
+---
+
+~/.venvs/smol/bin/python3 scripts/hil_replay.py --port /dev/ttyACM0
+Reading flight log: /home/ubuntu/Documents/Github/smol/validation/reference/flight.bin
+  3249 snapshots (32.5s)
+
+Opening /dev/ttyACM0...
+Waiting for board...
+  [board] Starting flight loop
+Board ready
+Streaming 3249 cycles...
+  [board] Flight started
+  1000/3249 cycles, 999 snapshots
+  2000/3249 cycles, 1998 snapshots
+  3000/3249 cycles, 2999 snapshots
+Waiting for flight completion...
+  [board] DIAG: steps=3249, overflows=0, pops=3250, overruns=1
+Received 3250 snapshots
+Saved to /home/ubuntu/Documents/Github/smol/validation/reference/results/flight/board.bin
+
+Loop timing (3248 cycles, 10000 us budget):
+  metric       mean      p50      p90      p99      max
+  cycle_us     4968     4965     5754     7716    15019
+
+  subsystem                  mean      max
+  ---------------------- -------- --------
+  imu_read                 2954.4     5086
+  gps_read                   16.8      278
+  mag_read                   20.4      328
+  baro_read                  15.4      314
+  rc_read                     3.0       34
+  ekf_predict              1318.4     2193
+  accel_fuse                  6.1      547
+  gps_fuse                   41.7     7539
+  mag_fuse                  240.7     1377
+  baro_fuse                  60.9      387
+  symmetrize                 35.2      252
+  snapshot                    0.0        0
+  ────────────────────── ──────── ────────
+  total (subsystems)       4713.0
+
+  Overruns (>10000 us): 1/3248
+
+Board vs truth:
+  [ok  ] north_m: 0.375  (bound: 0.5)
+  [FAIL] east_m: 0.676  (bound: 0.5)
+  [ok  ] altitude_m: 0.288  (bound: 2.0)
+  [ok  ] vn_mps: 0.135  (bound: 0.5)
+  [ok  ] ve_mps: 0.124  (bound: 0.5)
+  [ok  ] vd_mps: 0.135  (bound: 0.5)
+  [ok  ] phi_deg: 1.376  (bound: 2.0)
+  [ok  ] theta_deg: 1.333  (bound: 2.0)
+  [ok  ] psi_deg: 8.174  (bound: 15.0)
+
+FAILED — RMS bounds exceeded:
+  east_m: 0.676 >= 0.5
+
+---
+
+Yeah, I think that's okay. Look at the heading error. It seems to be behaving better, right? The error starts high, but then it converges nicely
+
+---
+
+Increase north and east bounds to 1m, and update the debug doc and backlog
+
+---
+
+# Slop Command
+
+Check the diff against main and remove all AI-generated slop introduced in this branch.
+
+## What is "Slop"?
+
+AI-generated code often has tells that make it look unnatural:
+
+### 1. Over-Commenting
+```typescript
+// BAD: AI slop
+// Get the user from the database
+const user = await db.getUser(id); // Fetch user by ID
+
+// GOOD: Self-documenting, no comment needed
+const user = await db.getUser(id);
+```
+
+### 2. Defensive Overkill
+```typescript
+// BAD: Unnecessary defensive checks
+function processUser(user: User) {
+  if (!user) {
+    throw new Error('User is required');
+  }
+  if (!user.id) {
+    throw new Error('User must have an id');
+  }
+  // ... when caller already validates
+}
+
+// GOOD: Trust internal callers
+function processUser(user: User) {
+  // Just do the work - caller handles validation
+}
+```
+
+### 3. Type Escapes
+```typescript
+// BAD: Casting to escape type issues
+const data = response as any;
+const items = (result as unknown as Item[]);
+
+// GOOD: Fix the actual type
+const data: ResponseType = response;
+```
+
+### 4. Inconsistent Style
+- Different naming conventions than the file uses
+- Different error handling patterns
+- Different import styles
+- Added JSDoc when file doesn't use it (or vice versa)
+
+### 5. Unnecessary Try/Catch
+```typescript
+// BAD: Wrapping things that don't throw
+try {
+  const x = a + b;
+  return x;
+} catch (error) {
+  console.error('Failed to add numbers', error);
+  throw error;
+}
+
+// GOOD: Just do it
+return a + b;
+```
+
+### 6. Verbose Logging
+```typescript
+// BAD: Logging everything
+console.log('Starting process...');
+console.log('User ID:', userId);
+console.log('Processing...');
+console.log('Done!');
+
+// GOOD: Log meaningful events only (or nothing for simple ops)
+```
+
+## Workflow
+
+### 1. Get the Diff
+
+```bash
+git diff main...HEAD
+```
+
+Identify all files changed in this branch.
+
+### 2. For Each Changed File
+
+1. Read the FULL file (not just the diff) to understand existing patterns
+2. Compare new code against existing style:
+   - Comment density
+   - Error handling approach
+   - Naming conventions
+   - Type annotation style
+   - Import organization
+
+### 3. Identify Slop
+
+Look for code that:
+- Has MORE comments than surrounding code
+- Has MORE defensive checks than similar code paths
+- Uses `any` or type assertions
+- Has different formatting/style than the file
+- Adds try/catch around non-throwing code
+- Adds logging that doesn't match file patterns
+
+### 4. Fix It
+
+Remove or adjust:
+- Delete unnecessary comments
+- Remove redundant validation (if callers are trusted)
+- Fix types properly instead of casting
+- Match existing code style
+- Remove pointless try/catch
+- Remove excessive logging
+
+**Use Edit tool to make changes.**
+
+### 5. Report
+
+End with a **1-3 sentence summary only**:
+
+```
+Removed 4 unnecessary comments, 2 redundant null checks, and fixed
+1 `any` cast in UserService.ts. Deleted try/catch wrapper in
+processPayment() since the caller handles errors.
+```
+
+## What NOT to Remove
+
+- Comments that explain non-obvious business logic
+- Validation at system boundaries (user input, external APIs)
+- Error handling that matches the file's existing patterns
+- Logging that matches existing patterns
+- Type assertions that are genuinely necessary
+
+## Example
+
+**Before (AI slop):**
+```typescript
+/**
+ * Fetches user data from the database
+ * @param userId - The ID of the user to fetch
+ * @returns The user object or null if not found
+ */
+async function getUser(userId: string): Promise<User | null> {
+  // Validate the user ID
+  if (!userId) {
+    throw new Error('userId is required');
+  }
+
+  try {
+    // Fetch the user from database
+    const user = await db.users.findOne({ id: userId });
+
+    // Return the user
+    return user as any as User;
+  } catch (error) {
+    // Log the error
+    console.error('Failed to fetch user:', error);
+    throw error;
+  }
+}
+```
+
+**After (cleaned):**
+```typescript
+async function getUser(userId: string): Promise<User | null> {
+  return db.users.findOne({ id: userId });
+}
+```
+
+**Report:** "Removed JSDoc (file doesn't use it), deleted redundant userId validation (TypeScript enforces it), removed try/catch (caller handles errors), fixed `any` cast by using proper return type."
+
+## Notes
+
+- Run AFTER implementation, before /review
+- Focuses on style consistency, not functionality
+- Be conservative - when unsure, leave it
+- Check git diff after to verify changes make sense
+
+---
+
+Base directory for this skill: /home/ubuntu/.claude/skills/cp-review
+
+# Code Review
+
+Review all changes on the current branch against main.
+
+## Process
+
+### 1. Gather Changes
+
+```bash
+git diff main --name-only
+```
+
+If no changes, inform the user and stop.
+
+For each changed file, read the FULL file (not just the diff) to understand context. Also run:
+
+```bash
+git diff main
+```
+
+### 2. Review Against Guidelines
+
+#### Code Reads Like Prose
+- Descriptive function and variable names — no abbreviations that require mental decoding
+- Linear data flows — can you read top-to-bottom without jumping around?
+- Efficient line count — no bloat, no unnecessary abstractions
+- DRY — is anything duplicated that shouldn't be?
+- Single responsibility — each function does ONE thing, each class has ONE purpose
+- Testable — could you write a test for this without mocking half the system?
+
+#### Make Invalid States Unrepresentable
+- Constraints encoded in types, not runtime checks
+- No scattered validation for the same invariant
+- `std::optional`, enums, and constructors used to enforce validity
+
+#### Trace the Data
+- Where does each value come from? What constraints does it carry?
+- Are there redundant conversions or unnecessary intermediates?
+- Does every downstream consumer get what it expects?
+
+#### Always Make It Better
+- Did we touch code without improving it?
+- Are there obvious improvements just outside the diff boundary? (note in suggestions, don't block)
+
+#### Project Conventions (from CLAUDE.md)
+- No docstrings unless asked
+- No fallbacks — code works or fails loudly
+- No dead code, no commented-out experiments
+- No default arguments
+- Leading underscores for class data members
+- PascalCase functions, snake_case locals, kCamelCase constants
+- "latest" not "last" for most recent values
+- Parameter passing: pointer for mutation, const ref for read-only, const value for scalars
+
+### 3. Check For Slop
+- Comments that explain "what" instead of "why"
+- Defensive checks for conditions that can't happen
+- Unnecessary try/catch or error handling beyond system boundaries
+- Verbose logging that doesn't match existing patterns
+- Style inconsistencies with surrounding code
+
+### 4. Present Results
+
+```
+## Review Summary
+
+**Assessment**: [APPROVE / REQUEST CHANGES]
+
+### Positive Findings
+- What was done well
+
+### Required Changes
+- Issues that must be fixed (file:line references)
+
+### Suggestions
+- Optional improvements
+
+### Convention Violations
+- Any CLAUDE.md or guideline violations
+```
+
+Be specific with file:line references. Prioritize correctness and readability over micro-optimizations. If approved, suggest running `/validate-smol` next.
+
+---
+
+implement suggestion 2. print_timing_report should take the previously extracted snapshots
+
+---
+
+Base directory for this skill: /home/ubuntu/Documents/Github/smol/.claude/skills/validate-smol
+
+# Validate smol
+
+Run all automated checks for the smol flight controller. Activate `~/.venvs/smol` before every command.
+
+**CRITICAL**: Capture the FULL output of every command. Never re-run a command just to see which tests failed — read the output you already have. Use `2>&1` to merge stderr, and save long outputs to a file if needed.
+
+## Checks
+
+Run these in order. If a check fails, stop and report — do not continue to later checks.
+
+### 1. Regenerate and format
+
+Regenerate all generated files and run the formatter. This ensures we never commit stale generated code or unformatted source.
+
+```bash
+python3 protocol/generate.py && just format && just check-format && just check-codegen
+```
+
+Both checks must pass. Generated files (`src/protocol/`) are excluded from formatting — the generator owns their style.
+
+### 2. Native unit tests
+
+```bash
+just test-native 2>&1 | tee /tmp/smol-test-native.txt
+```
+
+Read the FULL output to find failures. Do NOT re-run just to see which tests failed.
+
+Report pass/fail count from the summary line (e.g., "118 test cases: 118 succeeded").
+
+Known flaky: `test_smol_matches_full_after_full_sequence` (BUG-006, FullEkf nondeterminism). If ONLY this test fails, re-run once. If it fails twice, report it.
+
+### 3. Thread sanitizer
+
+```bash
+just test-tsan 2>&1 | tee /tmp/smol-test-tsan.txt
+```
+
+Catches data races in SharedState, ring buffer, and cross-thread communication. Requires `setarch -R` for ASLR compatibility on Linux 6.x.
+
+### 4. Elixir GCS tests
+
+```bash
+just test-gcs 2>&1 | tee /tmp/smol-test-gcs.txt
+```
+
+### 5. Native build
+
+```bash
+just build-native
+```
+
+### 6. RP2350B build (CMake)
+
+```bash
+just build-fc3
+```
+
+This catches missing source files in `CMakeLists.txt` and RP2350B-specific compilation errors that native builds miss.
+
+### 7. Replay validation
+
+```bash
+just test-replay 2>&1 | tee /tmp/smol-test-replay.txt
+```
+
+This builds `native_full_ekf`, replays reference flight data through both EKFs, and checks RMS error bounds vs truth. Requires steps 4-5 to have passed.
+
+## Report
+
+```
+## Validation Report
+
+### Regenerate + format
+[PASS — tree clean / PASS — N files updated / FAIL — details]
+
+### Native tests
+[PASS — N test cases: N succeeded / FAIL — details]
+
+### Thread sanitizer
+[PASS / FAIL — details]
+
+### GCS tests
+[PASS — N tests: N passed / FAIL — details]
+
+### Native build
+[PASS / FAIL]
+
+### RP2350B build
+[PASS / FAIL — details if failed]
+
+### Replay validation
+[PASS — N passed / FAIL — details]
+
+### Summary
+[READY TO SHIP / NEEDS FIXES — list what failed]
+```
+
+## Next Steps
+
+- All pass: `/ship` to commit
+- Failures: fix and re-run `/validate-smol`
+
+---
+
+Describe the changes that we made to the EKF, and explain where the logic for them came from. Why didn't we make these changes before?
+
+---
+
+Base directory for this skill: /home/ubuntu/.claude/skills/ship-pr
+
+# Ship PR
+
+Create a feature branch from the current branch, commit all changes, push, and open a PR.
+
+## Pre-flight
+
+Verify we have changes to ship:
+
+```bash
+git status
+git diff --stat
+git diff --cached --stat
+```
+
+If there are no changes (staged or unstaged, tracked or untracked), stop and inform the user.
+
+## Gather Context
+
+```bash
+git branch --show-current
+git log --oneline -5
+```
+
+The current branch becomes the PR's **base branch** (the branch to merge into). If already on a feature branch, ask the user if they want to PR into the branch they branched from instead.
+
+## Steps
+
+### 1. Determine branch name and commit message
+
+If the user provided arguments, use them to derive:
+- **Branch name**: kebab-case, prefixed with `feat/`, `fix/`, or `refactor/` based on the change type. Max 50 chars.
+- **Commit message**: conventional commit format from the same description.
+
+If no arguments provided, analyze the diff to determine both:
+- Read `git diff` and `git diff --cached` and any untracked files
+- Classify the change (feat, fix, refactor, docs, test, chore)
+- Draft a branch name and commit message
+
+**Show the user the proposed branch name and commit message before proceeding.** Wait for approval.
+
+### 2. Create branch and commit
+
+```bash
+git checkout -b <branch-name>
+```
+
+Stage all relevant files. **Do NOT stage:**
+- `.env` files or credentials
+- Large binary files unless they're clearly intentional (e.g., `.uf2` firmware)
+
+```bash
+git add <specific files>
+git commit -m "<message>
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
+```
+
+Use a HEREDOC for multi-line commit messages.
+
+### 3. Push
+
+```bash
+git push -u origin <branch-name>
+```
+
+### 4. Create PR
+
+```bash
+gh pr create --base <base-branch> --title "<title>" --body "$(cat <<'EOF'
+## Summary
+<1-3 bullet points describing the changes>
+
+## Test plan
+<How the changes were validated>
+
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+```
+
+The PR body should summarize what changed and how it was tested. Reference any validation output if `/validate-smol` or similar was run.
+
+### 5. Report
+
+```
+PR created: <url>
+Branch: <branch-name> → <base-branch>
+```
+
+## Safety Rules
+
+- **Never force push**
+- **Never push to main/master directly** — always create a branch
+- **Always show the branch name and commit message before creating them**
+- **If the user is already on a feature branch with commits**, ask whether to create a new branch or use the current one
+- Stage files explicitly — never use `git add -A` or `git add .`
+
+---
+
+any files you're not going to include should be deleted
+
+---
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   The user asked to continue investigating BUG-066 (EKF east position bias, ~6.3 m east_m RMS vs 0.5 m bound). They wanted to understand why east error was larger than north and whether sensor biases could be varied. They directed the investigation with specific experiments: creating an automated SIL maneuver test, verifying LLA-to-NED conversion correctness, rotating the aircraft spawn heading by 90° to check axis-dependence, and ultimately validating the fix on FC3v2 hardware. After resolution, they requested bounds updates, debug doc + backlog updates, slop check, code review, full validation, and finally shipping the PR.
+
+2. Key Technical Concepts:
+   - CRRCSim FDM (LaRCSim-derived eom01) operates at the equator internally — Latitude/Longitude start at 0, real-world origin added by APM input device
+   - `Longitude_dot = ve / (R * cos(Lat_geocentric))` where Lat_geocentric ≈ 0 → cos(0)=1.0 instead of cos(38.5°)=0.782 — a 22% east scaling error
+   - GPS innovation gate: grouped hard-reject (old) vs per-axis R-inflation (new). R-inflation: when |y| > 5σ, set R_eff = y²/25 - P so the update still happens with reduced Kalman gain
+   - PX4-aligned EKF tuning: accel process noise 0.05→0.35, gyro 0.00175→0.015, GPS pos noise 3.0→0.5, GPS vel noise 0.5/1.0→0.3/0.3
+   - Covariance collapse: P collapses rapidly, making the innovation gate threshold tight (~2.7 m), causing GPS rejection → positive feedback loop
+   - SIL protocol: UDP binary messages (SimRcMsg type 7, 24 bytes) with RC channels as int16 PWM values
+   - Flight mode grid: mode_a × mode_b → 3×3 grid, AttitudeHold = mode_a=mid(1500), mode_b=mid(1500)
+   - CRRCSim headless: `-u OFF -i APM`, reads `configs/smol_sensor_model.xml` for biases/noise/origin
+
+3. Files and Code Sections:
+
+   - `src/estimation/ekf/smol_ekf.cpp`
+     - Core EKF fix: replaced grouped GPS innovation hard-reject with per-axis R-inflation
+     - Old code rejected entire position group if any axis exceeded 5σ
+     - New code:
+     ```cpp
+     void SmolEkf::FuseGpsMeasurement(const float* R_gps, const float* y_gps) {
+       x.setZero();
+       for (int i = 0; i < 6; i++) {
+         float R_eff = R_gps[i];
+         float S = P(i, i) + R_eff;
+         float gate = kGpsInnovationGateSigma * sqrtf(S);
+         if (fabsf(y_gps[i]) > gate) {
+           float y_sq = y_gps[i] * y_gps[i];
+           float gate_sq = kGpsInnovationGateSigma * kGpsInnovationGateSigma;
+           R_eff = y_sq / gate_sq - P(i, i);
+           S = P(i, i) + R_eff;
+         }
+         K_scalar = P.col(i) / S;
+         P -= S * (K_scalar * K_scalar.transpose());
+         x += K_scalar * y_gps[i];
+       }
+       ApplyStateCorrection();
+       ExportCovarianceDiagonal();
+     }
+     ```
+
+   - `src/param/param_store.h`
+     - PX4-aligned EKF tuning defaults changed: EkfAccelStdX/Y/Z 0.05→0.35, EkfGyroStdX/Y/Z 0.00175→0.015, EkfAccBiasStd 0.01→0.003, EkfGyrBiasStd 0.00025→0.001, EkfGpsPosNe 3.0→0.5, EkfGpsPosD 6.0→1.5, EkfGpsVelNe 0.5→0.3, EkfGpsVelD 1.0→0.3
+
+   - `validation/rms_check.py`
+     - north_m and east_m bounds raised from 0.5 to 1.0
+
+   - `scripts/hil_replay.py`
+     - Removed duplicated local `compute_rms`, `check_rms`, `RMS_BOUNDS` — now uses shared `rms_check` module
+     - Added `print_timing_report(ekf: np.ndarray)` showing cycle_us percentiles and per-subsystem mean/max timing breakdown
+     - Refactored to parse board snapshots once, shared between timing report and RMS computation
+
+   - `validation/sil_bias_sweep.py` (NEW)
+     - Automated SIL bias sweep: flies a scripted maneuver (idle→climb→right_turn→left_turn→wings_level) with configurable bias configs
+     - 4 built-in configs: zero, accel_only, heading_only, full
+     - Launches CRRCSim headless + FC SIL, sends RC via UDP at 50 Hz from background thread, modifies smol_sensor_model.xml for each config, restores original on exit
+
+   - `validation/sil_diagnose.py`
+     - Added INJECTED_BIASES entries for mbx/mby/mbz
+     - Added `print_mag_bias_convergence()` showing mbx/mby/mbz and mix/miy/miz vs injected truth at time intervals
+
+   - `docs/debugging/ekf-east-position-bias.md`
+     - Updated status to RESOLVED, added "Root cause (confirmed)" section documenting the CRRCSim FDM cos(lat) bug and SmolEkf gate issue, final results tables, remaining non-blocking work
+
+   - `docs/BACKLOG.md`
+     - BUG-066 entry replaced with closed summary, stats updated to 11 open / 0 bugs / 60 completed
+
+   - `test/test_ekf/test_ekf.cpp`
+     - Renamed `RunGpsInnovationGateRejectsPositionGroup` → `RunGpsInnovationGateInflatesR`
+     - Changed assertions: now expects north_correction between 1.0 and 50.0 (was expecting <1.0)
+
+   - `test/test_param_store/test_param_store.cpp`
+     - Updated all hardcoded default expectations to match new PX4-aligned values
+
+   - `test/test_param_toml/test_param_toml.cpp`
+     - Changed `IsNonDefaultResetToDefault` test: 0.05f → 0.35f
+
+   - CRRCSim changes (separate repo, already pushed as commit 172a07f):
+     - `src/mod_inputdev/inputdev_apm/inputdev_apm.cpp`: `lon_rad = fdm_lon / cos(_origin_lat_rad) + _origin_lon_rad` (was `lon_rad = Global::aircraft->getFDM()->getLon() + _origin_lon_rad`)
+     - `src/crrc_main.cpp`: added configurable `launch.heading_offset` (degrees)
+     - `crrcsim.xml`: added `heading_offset="0"` attribute
+     - Reverted [SIL-DIAG] instrumentation back to original printf
+
+   - Deleted files: `validation/analyze_session.py`, `validation/replay_ab.py`, `validation/trim_flight.py`, `validation/reference/trimmed_1s/` (throwaway diagnostic artifacts)
+
+4. Errors and fixes:
+   - **hil_replay.py 340 km position error**: Board output started with lat=0, lon=0 (pre-GPS-fix). The local `compute_rms` didn't skip pre-origin snapshots. Fixed by replacing with shared `rms_check.compute_rms` which checks `FLAG_ORIGIN_VALID`.
+   - **print_timing_report max format error**: `np.max(values)` returned float64 from uint16 array, but format string used `%d`. Fixed with `int(np.max(values))`.
+   - **Test failures after param/gate changes**: 4 tests failed (3 param defaults, 1 gate behavior). Fixed by updating hardcoded values in test_param_store, test_param_toml, and renaming/rewriting the gate test to verify R-inflation behavior (correction between 1-50 m on 100 m innovation). Initial bounds of 0.5-20 were too tight (actual correction was 25.08 m), widened to 1-50.
+   - **sil_bias_sweep.py initial version**: Had a local `compute_position_rms` using nonexistent `ned_from_lla` function. Replaced with shared `rms_check.compute_rms`.
+
+5. Problem Solving:
+   **SOLVED — BUG-066 root cause**: CRRCSim's FDM operates at the equator internally (Latitude=0). The longitude rate equation `Longitude_dot = ve / (R * cos(Lat_geocentric))` uses cos(0°)=1.0 instead of cos(real_lat). At Davis (38.5°N), this caused a 22% mismatch between IMU east velocity and GPS east position.
+
+   Key investigation path:
+   - Created automated SIL bias sweep → discovered zero-bias still had 6.7 m east error
+   - Verified LLA↔NED conversions are correct (spherical vs WGS84 difference only 0.24%)
+   - Analyzed GPS innovations → found 18+ m east innovation being ignored
+   - Implemented R-inflation → 37% improvement (6.7→4.2 m) but not enough
+   - Rotated spawn heading 90° → error stayed in east (not along-track)
+   - Traced CRRCSim FDM coordinate system → found cos(lat) scaling bug
+   - Fixed CRRCSim → east dropped to 0.63 m
+
+   **Secondary fix**: SmolEkf GPS innovation gate replaced hard-reject with R-inflation. The old grouped gate created a positive feedback loop once covariance collapsed.
+
+6. All user messages:
+   - "Let's continue working on the @../docs/debugging/ekf-east-position-bias.md. We need to understand why the position error is so much larger for the east direction than north. we should consider the role that the sensor biases are playing. is there a way to re-run the replay data using different sensor biases?"
+   - "Since we can run crrcsim headless (as we do for other tests), why should try set up a repeatable test for this. Since we have assisted flight modes, we can just send rc commands and not worry that the airplane will crash. 1. Let the vehicle sit for a few seconds at 0 throttle 2. change the flight mode to Attitude hold mode 3. set throttle to 80% and pitch command to 10 degrees 4. after 5 seconds, set the roll command to max right 5. after 5 seconds, set the roll command to max left 6. after 5 seconds set roll and pitch to 0, hold for 5 seconds 7. exit"
+   - "I want to make sure that we're converting LLA to NED correctly. What formulas are you using? HEre's a website with some examples. We should be using a simple conversion using an origin point: https://movable-type.co.uk/scripts/latlong.html"
+   - "yes, try that" (referring to R-inflation option)
+   - "Can you try spawning the aircraft rotated at 90 degrees and see if the error switches to the north/south axis?"
+   - "We own the crrcsim repo. it's a fork. we can make any changes we want to that source code." (interrupted my plan to compensate in APM output)
+   - "Excellent, commit those changes to the crrcsim repo and push. Then I need to test a replay on the FC3v2 board and make sure the code changes don't cause any loop overruns"
+   - "what command do I use to test the timing?"
+   - "something is wrong: [board test output showing 340km errors]"
+   - "The hil_replay script doesn't show any timing information. I would like a statistical breakdown of the loop intervals to be displayed, even if there aren't any overruns"
+   - "[Board test output showing east_m: 0.676 failing 0.5 bound]"
+   - "Yeah, I think that's okay. Look at the heading error. It seems to be behaving better, right? The error starts high, but then it converges nicely"
+   - "Increase north and east bounds to 1m, and update the debug doc and backlog"
+   - "/cadre:slop"
+   - "/cp-review" (review all changes against main)
+   - "implement suggestion 2. print_timing_report should take the previously extracted snapshots"
+   - "/validate-smol"
+   - "Describe the changes that we made to the EKF, and explain where the logic for them came from. Why didn't we make these changes before?"
+   - "/ship-pr"
+   - "any files you're not going to include should be deleted"
+
+7. Pending Tasks:
+   - None explicitly pending. PR #69 has been created and is awaiting review/merge.
+
+8. Current Work:
+   The PR has been shipped. The most recent action was creating PR #69 (`fix/bug-066-ekf-east-position-bias` → `main`) at https://github.com/copperpunk/smol/pull/69. Before that, I deleted throwaway diagnostic files (analyze_session.py, replay_ab.py, trim_flight.py, trimmed_1s/), committed 13 files, pushed, and created the PR. All validation passed (371 native tests, TSan, 110 GCS tests, FC3 build, replay 2/2).
+
+9. Optional Next Step:
+   No explicit next step requested. The PR is open and ready for review. The user may want to merge the PR, or may have follow-up work. The debug doc lists non-blocking remaining work: Option 2 heading-only skip (stashed) and mag bias OU parameterization cleanup.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /home/ubuntu/.REDACTED.jsonl
+
+---
+
+Base directory for this skill: /home/ubuntu/.claude/skills/cp-pr-fetcher
+
+Run the helper script to fetch all PR comments since the latest commit:
+
+```bash
+~/.claude/skills/cp-pr-fetcher/scripts/fetch_pr_comments.sh
+```
+
+Then process the output:
+
+1. Parse the issue comments, review comments, and review summaries from the script output.
+2. Itemize the list of comments in descending order, with the highest priority comments first.
+3. For each comment, include its author and assess if it is a valid comment. If it is valid, provide a detailed description of how you would address the comment.
+
+---
+
+yes
+
+---
+
+We consistently have a single overrun on the replay test, likely during a gps update. I'd like to see the sim time at which this overrun occurs:
+Waiting for flight completion...
+  [board] DIAG: steps=3249, overflows=0, pops=3250, overruns=1
+Received 3250 snapshots
+Saved to /home/ubuntu/Documents/Github/smol/validation/reference/results/flight/board.bin
+
+Loop timing (3248 cycles, 10000 us budget):
+  metric       mean      p50      p90      p99      max
+  cycle_us     4988     4977     5762     7662    14600
+
+  subsystem                  mean      max
+  ---------------------- -------- --------
+  imu_read                 2948.8     5106
+  gps_read                   17.9      304
+  mag_read                   22.1      202
+  baro_read                  18.8      253
+  rc_read                     4.5       44
+  ekf_predict              1308.2     2210
+  accel_fuse                  5.7      470
+  gps_fuse                   35.4     7286
+  mag_fuse                  236.3      952
+  baro_fuse                  54.9      342
+  symmetrize                 35.6       89
+  snapshot                    0.0        0
+  ────────────────────── ──────── ────────
+  total (subsystems)       4688.2
+
+---
+
+I just ran the same test, and it failed. that's strange:
+Waiting for flight completion...
+  [board] DIAG: steps=3249, overflows=0, pops=3250, overruns=0
+Received 3250 snapshots
+Saved to /home/ubuntu/Documents/Github/smol/validation/reference/results/flight/board.bin
+
+Loop timing (3249 cycles, 10000 us budget):
+  metric       mean      p50      p90      p99      max
+  cycle_us     4993     4982     5804     7677     8035
+
+  subsystem                  mean      max
+  ---------------------- -------- --------
+  imu_read                 2942.5     5082
+  gps_read                   17.7      304
+  mag_read                   22.3      311
+  baro_read                  17.5      209
+  rc_read                     4.4       40
+  ekf_predict              1320.1     2100
+  accel_fuse                  3.9       47
+  gps_fuse                   34.1      919
+  mag_fuse                  241.6     1362
+  baro_fuse                  55.7      683
+  symmetrize                 35.7      178
+  snapshot                    0.0        0
+  ────────────────────── ──────── ────────
+  total (subsystems)       4695.4
+
+  Overruns (>10000 us): 0/3249
+
+Board vs truth:
+  [FAIL] north_m: 72.468  (bound: 1.0)
+  [FAIL] east_m: 86.175  (bound: 1.0)
+  [FAIL] altitude_m: 2.336  (bound: 2.0)
+  [FAIL] vn_mps: 2.045  (bound: 0.5)
+  [ok  ] ve_mps: 0.332  (bound: 0.5)
+  [ok  ] vd_mps: 0.295  (bound: 0.5)
+  [FAIL] phi_deg: 4.796  (bound: 2.0)
+  [FAIL] theta_deg: 3.083  (bound: 2.0)
+  [FAIL] psi_deg: 53.901  (bound: 15.0)
+
+FAILED — RMS bounds exceeded:
+  north_m: 72.468 >= 1.0
+  east_m: 86.175 >= 1.0
+  altitude_m: 2.336 >= 2.0
+  vn_mps: 2.045 >= 0.5
+  phi_deg: 4.796 >= 2.0
+  theta_deg: 3.083 >= 2.0
+  psi_deg: 53.901 >= 15.0
+error: Recipe `test-board` failed on line 97 with exit code 1
+
+---
+
+[Request interrupted by user]
+
+---
+
+1. I flashed the latest firmware
+2. I ran the test-board command, and the test passed
+3. You made changes to hil_replay (which don't affect teh board at all)
+4. I ran the test-board command again, and the test failed
+
+---
+
+It got even worse. My guess is that something is persisting on the board between runs. I bet if I reset the board, it will pass the test:
+Saved to /home/ubuntu/Documents/Github/smol/validation/reference/results/flight/board.bin
+
+Loop timing (3249 cycles, 10000 us budget):
+  metric       mean      p50      p90      p99      max
+  cycle_us     4992     4990     5786     7701     8132
+
+  subsystem                  mean      max
+  ---------------------- -------- --------
+  imu_read                 2944.6     5122
+  gps_read                   17.4      235
+  mag_read                   22.9      258
+  baro_read                  18.3      288
+  rc_read                     4.4       46
+  ekf_predict              1313.1     2185
+  accel_fuse                  3.9       50
+  gps_fuse                   34.5      943
+  mag_fuse                  242.1     1147
+  baro_fuse                  55.9      667
+  symmetrize                 35.8      435
+  snapshot                    0.0        0
+  ────────────────────── ──────── ────────
+  total (subsystems)       4692.7
+
+  Overruns (>10000 us): 0/3249
+
+Board vs truth:
+  [FAIL] north_m: 124.620  (bound: 1.0)
+  [FAIL] east_m: 156.704  (bound: 1.0)
+  [FAIL] altitude_m: 2.540  (bound: 2.0)
+  [FAIL] vn_mps: 1.676  (bound: 0.5)
+  [ok  ] ve_mps: 0.334  (bound: 0.5)
+  [ok  ] vd_mps: 0.299  (bound: 0.5)
+  [FAIL] phi_deg: 4.559  (bound: 2.0)
+  [FAIL] theta_deg: 2.634  (bound: 2.0)
+  [FAIL] psi_deg: 46.419  (bound: 15.0)
+
+FAILED — RMS bounds exceeded:
+  north_m: 124.620 >= 1.0
+  east_m: 156.704 >= 1.0
+  altitude_m: 2.540 >= 2.0
+  vn_mps: 1.676 >= 0.5
+  phi_deg: 4.559 >= 2.0
+  theta_deg: 2.634 >= 2.0
+  psi_deg: 46.419 >= 15.0
+error: Recipe `test-board` failed on line 97 with exit code 1
+
+---
+
+Consecutive runs now behave identically. And we're getting the overrun in the same place. Is there a way to alleviate this without regressing?
+  Overruns (>10000 us): 1/3248
+    t=0.20s  cycle=14660 us  top=gps_fuse (7224 us)
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+it's not worth all that effort just to avoid a single overrun while the vehicle is stationary on the ground. I just wanted you to check for any possible optimizations. it appears that we're already doing the best we can
+
+---
+
+yes
+
+---
+
+Base directory for this skill: /home/ubuntu/.claude/skills/cp-pr-fetcher
+
+Run the helper script to fetch all PR comments since the latest commit:
+
+```bash
+~/.claude/skills/cp-pr-fetcher/scripts/fetch_pr_comments.sh
+```
+
+Then process the output:
+
+1. Parse the issue comments, review comments, and review summaries from the script output.
+2. Itemize the list of comments in descending order, with the highest priority comments first.
+3. For each comment, include its author and assess if it is a valid comment. If it is valid, provide a detailed description of how you would address the comment.
+
+
+ARGUMENTS: Keep in mind how PX4 and Ardupilot handle their EKFs when you are evaluating gemini's comments. We shouldn't be making up our own approach. We should be leaning heavily on proven systems.
+
+---
+
+# Plan Command
+
+Plan a new feature or task with proper structure before implementation.
+
+**Reference skills based on feature type:**
+- API/backend: Read `.claude/skills/api-design-patterns/SKILL.md`
+- React components: Read `.claude/skills/react-patterns/SKILL.md`
+- UI styling: Read `.claude/skills/tailwind-conventions/SKILL.md`
+- Error handling: Read `.claude/skills/error-handler/SKILL.md`
+- TDD mode: Read `.claude/skills/test-generator/SKILL.md`
+
+**For new projects:** Use `/greenfield` first to define specs, then `/plan` for implementation.
+
+## Flags
+
+- `--tdd` - Enable Test-Driven Development mode (write tests first)
+
+## Validation
+
+If no feature description provided, ask for one.
+
+## Planning Steps
+
+### 1. Gather Context (REQUIRED)
+
+**You MUST read relevant files before creating a plan.** Don't plan based on assumptions.
+
+Before planning:
+- Read relevant CLAUDE.md files
+- **Read the actual files** that will be modified
+- Identify existing patterns and conventions
+- Understand related code and dependencies
+
+Use `Explore` agent or direct file reads to understand:
+- Current implementation
+- Existing patterns in similar code
+- Test file locations and patterns
+
+### 2. Requirements Clarification
+
+Ask clarifying questions if needed:
+- What is the expected behavior?
+- What are the edge cases?
+- What are the acceptance criteria?
+- Are there performance requirements?
+
+### 3. Create Plan
+
+Structure the implementation with **specific details**:
+
+**Detail Level Guidelines:**
+
+| Change Type | Detail Level |
+|-------------|--------------|
+| Complex/risky changes | Line numbers + code snippets |
+| Medium changes | Function/method names |
+| Simple/obvious changes | File paths only |
+| New files | File path + structure outline |
+
+**Output Format:**
+```
+## Feature: [description]
+
+### Requirements
+- [ ] Requirement 1
+- [ ] Requirement 2
+
+### Technical Approach
+1. Step 1 - [description]
+   - Why: [reasoning for this approach]
+2. Step 2 - [description]
+
+### Files to Modify
+
+#### `path/to/file.ts` (lines 45-67)
+**Current:** [brief description of current state]
+**Change:** [what will change]
+```typescript
+// Example of the change (for complex modifications)
+function existingFunction() {
+  // Add: new caching logic here
+}
+```
+
+#### `path/to/new-file.ts` (NEW)
+**Purpose:** [why this file is needed]
+**Structure:**
+- `functionA()` - [purpose]
+- `functionB()` - [purpose]
+
+### Dependencies
+- [list any new dependencies]
+
+### Testing Strategy
+- Unit tests: [specific test cases]
+- Integration tests: [approach]
+- Test file: `path/to/tests/file.test.ts`
+
+### Alternatives Considered
+- [Alternative 1] - [why not chosen]
+
+### Risks
+- [potential issue] - [mitigation]
+
+### Complexity
+- [low/medium/high] - [justification]
+```
+
+### 4. TDD Mode (if --tdd flag)
+
+When `--tdd` is specified, modify the plan to include:
+
+```
+### TDD Implementation Order
+
+1. **Acceptance Criteria → Test Cases**
+   - [ ] Test: [criteria 1 as test]
+   - [ ] Test: [criteria 2 as test]
+
+2. **Write Failing Tests First**
+   Files to create/modify:
+   - `__tests__/feature.test.ts` - [test descriptions]
+
+3. **Implement to Pass Tests**
+   - Implement minimum code to pass each test
+   - Run tests after each change
+
+4. **Refactor**
+   - Clean up while keeping tests green
+```
+
+**TDD Workflow:**
+```
+Write test → Run (FAIL) → Implement → Run (PASS) → Refactor → Run (PASS)
+```
+
+### 5. Confidence Check
+
+Run Pre-Implementation Confidence Check before proceeding.
+
+### 6. Await Approval
+
+Present plan and wait for user approval before implementation.
+
+**Key review points for user:**
+- Are the file changes correct?
+- Is the approach sound?
+- Any concerns about the changes?
+
+## Example (Standard)
+
+```
+## Feature: Add rate limiting to API
+
+### Requirements
+- [ ] Limit requests to 100/minute per user
+- [ ] Return 429 when exceeded
+- [ ] Log rate limit hits
+
+### Technical Approach
+1. Add rate limiting middleware using existing Express pattern
+   - Why: Consistent with authMiddleware.ts approach
+2. Store counters in Redis (already used for sessions)
+
+### Files to Modify
+
+#### `src/middleware/rateLimitMiddleware.ts` (NEW)
+**Purpose:** Rate limiting middleware
+**Structure:**
+- `rateLimiter()` - Express middleware
+- `getRateKey()` - Generate Redis key
+
+#### `src/app.ts` (line 23)
+**Current:** Auth middleware only
+**Change:** Add rate limiter after auth
+```typescript
+app.use(authMiddleware);
+app.use(rateLimiter({ limit: 100, window: 60 })); // ADD
+```
+
+### Testing Strategy
+- Unit tests: Mock Redis, test limit logic
+- Integration tests: Hit endpoint 101 times
+- Test file: `__tests__/middleware/rateLimitMiddleware.test.ts`
+
+### Alternatives Considered
+- express-rate-limit package - Adds dependency, we can do simpler
+
+### Risks
+- Redis connection issues - Fail open (allow requests)
+
+### Complexity
+- Medium - New middleware but follows existing patterns
+```
+
+## Example (TDD Mode)
+
+```
+/plan --tdd Add rate limiting to API
+```
+
+```
+## Feature: Add rate limiting to API (TDD)
+
+### TDD Implementation Order
+
+1. **Acceptance Criteria → Test Cases**
+   - [ ] Test: Returns 200 for requests under limit
+   - [ ] Test: Returns 429 when limit exceeded
+   - [ ] Test: Resets after window expires
+   - [ ] Test: Different users have separate limits
+
+2. **Write Failing Tests First**
+   File: `__tests__/middleware/rateLimitMiddleware.test.ts`
+   ```typescript
+   describe('rateLimiter', () => {
+     it('allows requests under limit', async () => { ... });
+     it('returns 429 when limit exceeded', async () => { ... });
+     it('resets after window expires', async () => { ... });
+   });
+   ```
+
+3. **Implement to Pass Tests**
+   - Create `rateLimitMiddleware.ts`
+   - Implement `rateLimiter()` function
+   - Run tests after each addition
+
+4. **Refactor**
+   - Extract Redis key generation
+   - Add JSDoc comments
+```
+
+## Next Steps
+
+After approval:
+- If `--tdd`: Write tests first, then implement
+- Otherwise: Start implementation
+- Use `/review` for code review
+- Use `/validate` to verify before completion
+- Use `/ship` when ready to commit
+
+
+ARGUMENTS: The PR has been merged, and I have pulled the latest code from main. Bug-066 is now complete. Is bug-057 still valid?
+
+---
+
+Closed backlog items need to be moved to @docs/COMPLETED_BACKLOG.md
+
+---
+
+# Backlog Mode
+
+You are in **Backlog Mode** - documenting bugs and improvements WITHOUT implementing them.
+
+**Reference skills based on issue domain:**
+- API issues: Read `.claude/skills/api-design-patterns/SKILL.md`
+- Frontend components: Read `.claude/skills/react-patterns/SKILL.md`
+- Error handling: Read `.claude/skills/error-handler/SKILL.md`
+- UX improvements: Read `.claude/skills/frontend-design/SKILL.md`
+
+## Available Tools & When to Use Them
+
+### Codebase Exploration
+Use **Task tool with Explore subagent** for:
+- Finding root causes of bugs
+- Understanding current implementation
+- Locating affected files and components
+```
+Task(subagent_type="Explore", prompt="Very thorough: find all code related to [X]")
+```
+
+### External Research
+Use **Exa search** (`mcp__exa__exa_search`) for:
+- Checking if others encountered the same bug
+- Finding known fixes or workarounds
+- Researching UI/UX best practices for similar features
+```
+mcp__exa__exa_search(query="[framework] [issue description] fix")
+```
+
+Use **Ref documentation** (`mcp__Ref__*`) for:
+- Checking official framework/library docs
+- Verifying correct API usage
+- Finding recommended patterns
+```
+mcp__Ref__ref_search_documentation(query="[library] [feature] documentation")
+```
+
+### UI/UX Verification
+Use **Playwright** (`mcp__playwright__*`) for UX issues:
+- Navigate to the affected page
+- Take screenshot of current state (for BACKLOG entry)
+- Verify the issue exists as user described
+- Document "before" state
+```
+mcp__playwright__browser_navigate(url="http://localhost:3000/path")
+mcp__playwright__browser_take_screenshot(filename="backlog-ux-xxx-before.png")
+```
+
+### Complex Analysis
+Use **Sequential thinking** (`mcp__sequential-thinking__sequentialthinking`) for:
+- Multi-step root cause analysis
+- Weighing multiple potential causes
+- Structuring complex investigations
+
+---
+
+## Parallel Execution Strategy
+
+You CAN run multiple subagents AND tools in parallel by making multiple tool calls in a single message. Use this for efficiency when tasks are **independent**.
+
+### Multiple Subagents in Parallel
+
+**When to use:**
+- Bug/feature spans frontend + backend (separate concerns)
+- Investigation touches multiple packages
+- Need both code exploration AND documentation research
+- Complex issue benefits from divide-and-conquer
+
+**Example - Bug spanning layers:**
+```
+[Single message, multiple Task calls - all run simultaneously:]
+
+Task(subagent_type="Explore", prompt="Very thorough: find tRPC handlers for [feature]")
+Task(subagent_type="Explore", prompt="Very thorough: find React components rendering [feature]")
+Task(subagent_type="documentation-researcher", prompt="Research [framework] best practices for [pattern]")
+```
+
+**Example - Multi-package investigation:**
+```
+Task(subagent_type="Explore", prompt="Search packages/trpc for [issue]")
+Task(subagent_type="Explore", prompt="Search packages/features for [issue]")
+Task(subagent_type="Explore", prompt="Search apps/web for [issue]")
+```
+
+### Subagents + Tools in Parallel
+
+**Example - UX issue (all at once):**
+```
+Task(subagent_type="Explore", prompt="Find component code for [element]")
+mcp__playwright__browser_navigate(url="http://localhost:3000/path")
+mcp__exa__exa_search(query="UX best practices [pattern]")
+```
+
+### When to Stay Sequential
+
+- Results from first search inform what to search next
+- Need to confirm issue exists before deep diving
+- Small codebase where one Explore is sufficient
+- Risk of overlapping/duplicated search areas
+
+**Example - Sequential dependency:**
+```
+1. First: Explore → discovers it's a Prisma schema issue
+2. Then: Ref search → "Prisma relations documentation"
+   (wouldn't know to search Prisma without step 1)
+```
+
+### Rule of Thumb
+| Situation | Approach |
+|-----------|----------|
+| Know what to search for | **Parallel** - maximize speed |
+| Need to discover what to search | **Sequential** - learn first |
+| Large codebase, clear separation | **Parallel subagents** - divide and conquer |
+| Small codebase or focused issue | **Single subagent** - avoid overhead |
+
+---
+
+## Initial Setup
+
+1. **Check for arguments**: If user passed `The vehicle is not capable of taking off or landing by itself. This is the last missing piece for the vehicle being able to fly a complete mission. We need to be capable of supporting multiple takeoff methods (hand-launch, catapult, standard runway), as well as multiple landing methods (skid-based, i.e., no landing roll, and wheel-based, i.e., with a landing roll). We should be able to incremently add these methods, i.e., they should be interchangable, and the GCS should know how to display the path for each method. We also need two different types of landing approaches, one for when downward facing lidar is available (accurate estimate of AGL), and one without accurate AGL. I'd like to explore how PX4 and Ardupilot handle all of these scenarios, but I don't want to just copy them. I think we can do better.`, use it as the first item description
+2. **Locate BACKLOG.md** by searching:
+   - `_private/docs/BACKLOG.md`
+   - `_private/BACKLOG.md`
+   - `BACKLOG.md`
+3. **If not found**: Ensure `_private/` is in `.gitignore`, then create `_private/docs/BACKLOG.md` with this template:
+   ```markdown
+   # Project Backlog
+
+   Issues and improvements tracked for this project.
+
+   ---
+
+   ## Bugs
+
+   (No bugs reported yet)
+
+   ---
+
+   ## Enhancements
+
+   (No enhancements reported yet)
+
+   ---
+
+   ## UX Improvements
+
+   (No UX improvements reported yet)
+
+   ---
+
+   ## Completed
+
+   Items moved here after being fixed/implemented.
+
+   ---
+
+   ## Statistics
+   - **Total Open**: 0
+   - **Bugs**: 0
+   - **Enhancements**: 0
+   - **UX**: 0
+   - **Last Updated**: YYYY-MM-DD
+   ```
+
+---
+
+## Workflow Loop
+
+For each item, execute these steps IN ORDER:
+
+### Step 1: Receive
+- Accept ONE item at a time
+- If user provides multiple, say: "Let's start with the first one. What is it?"
+- If `The vehicle is not capable of taking off or landing by itself. This is the last missing piece for the vehicle being able to fly a complete mission. We need to be capable of supporting multiple takeoff methods (hand-launch, catapult, standard runway), as well as multiple landing methods (skid-based, i.e., no landing roll, and wheel-based, i.e., with a landing roll). We should be able to incremently add these methods, i.e., they should be interchangable, and the GCS should know how to display the path for each method. We also need two different types of landing approaches, one for when downward facing lidar is available (accurate estimate of AGL), and one without accurate AGL. I'd like to explore how PX4 and Ardupilot handle all of these scenarios, but I don't want to just copy them. I think we can do better.` provided, use that as the item
+
+### Step 2: Classify
+Determine type based on description:
+| Type | Criteria |
+|------|----------|
+| **BUG** | Something broken, error, unexpected behavior |
+| **ENH** | New feature, capability, or functional improvement |
+| **UX** | Visual, usability, or interface improvement |
+
+State your classification: "This sounds like a **[TYPE]**."
+
+### Step 3: Check Duplicates
+- Read BACKLOG.md
+- Search for similar existing entries
+- If potential duplicate found: "This might be related to [ID]. Is this the same issue or different?"
+
+### Step 4: Investigate (Use Appropriate Tools)
+
+**For ALL types:**
+- Use **Explore subagent** to find relevant code
+
+**For BUGs additionally:**
+- Use **Exa** to search if others hit this issue
+- Check for known fixes or workarounds
+
+**For ENH additionally:**
+- Use **Ref** to check official docs for best practices
+- Use **Exa** to research how others implement similar features
+
+**For UX additionally:**
+- Use **Playwright** to navigate to the page and take a screenshot
+- Verify the issue exists as described
+- Save screenshot as `backlog-ux-XXX-current.png` for documentation
+
+### Step 5: Analyze
+Use sequential thinking if complex. Summarize:
+- What you found in codebase
+- What external research revealed (if any)
+- Root cause (BUG) or approach (ENH/UX)
+- All affected files with full paths
+- Suggested priority (P1/P2/P3)
+
+### Step 6: Preview Entry
+Show the complete BACKLOG entry to user:
+```
+Here's the proposed entry:
+
+### [TYPE-XXX] Title
+- **Reported**: date
+- **Status**: Open
+...
+
+Does this look accurate? Any changes?
+```
+
+### Step 7: Document
+After user confirms (or says "looks good", "yes", "ok"):
+- Add entry to appropriate section in BACKLOG.md
+- Update Statistics section
+- Confirm: "Added as **[TYPE-XXX]** to BACKLOG.md"
+
+### Step 8: Next Item
+Ask: "Next item? (or 'done' to exit backlog mode)"
+- If user provides another item → Go to Step 1
+- If user says "done", "exit", "that's all" → End with summary of items added
+
+---
+
+## Critical Rules
+
+1. **NO IMPLEMENTATION** - Only analyze and document
+2. **NO CODE CHANGES** - Only read/explore, write only to BACKLOG.md
+3. **ALWAYS PREVIEW** - Never add without user confirmation
+4. **ONE AT A TIME** - Don't batch multiple items
+5. **USE SUBAGENTS** - For thorough codebase exploration
+6. **RESEARCH WHEN RELEVANT** - Use Exa/Ref for external context
+7. **SCREENSHOT UX ISSUES** - Visual documentation helps
+8. **INCREMENT IDs** - Check highest existing ID, add 1
+
+---
+
+## Priority Guidelines
+
+| Priority | Use When |
+|----------|----------|
+| **P1 (Critical)** | Blocks core functionality, security risk, data loss, affects all users |
+| **P2 (Medium)** | Significant but has workaround, important feature request |
+| **P3 (Low)** | Minor issue, cosmetic, nice-to-have |
+
+---
+
+## Templates
+
+### BUG-XXX
+```markdown
+### [BUG-XXX] Title
+- **Reported**: YYYY-MM-DD
+- **Status**: Open
+- **Priority**: P1/P2/P3
+- **Description**: What's broken
+- **Steps to Reproduce**:
+  1. First step
+  2. Second step
+- **Expected**: What should happen
+- **Actual**: What happens instead
+- **Root Cause Analysis**:
+  - Finding from exploration
+  - Why this occurs
+- **External Research**: (if relevant - similar issues found, known fixes)
+- **Affected Files**:
+  - `path/to/file.ts:lineNum` - description
+- **Proposed Fix**: High-level approach (NOT code)
+```
+
+### ENH-XXX
+```markdown
+### [ENH-XXX] Title
+- **Reported**: YYYY-MM-DD
+- **Status**: Open
+- **Priority**: P1/P2/P3
+- **Description**: What to add/improve
+- **User Impact**: Who benefits, how
+- **Current State**: How it works now
+- **Proposed Solution**: High-level approach
+- **Best Practices**: (from research if relevant)
+- **Scope**: Small (hours) / Medium (day) / Large (days+)
+- **Affected Files**:
+  - `path/to/file.ts` - what changes needed
+- **Dependencies**: Blockers or prerequisites
+```
+
+### UX-XXX
+```markdown
+### [UX-XXX] Title
+- **Reported**: YYYY-MM-DD
+- **Status**: Open
+- **Priority**: P1/P2/P3
+- **Description**: UX issue or improvement
+- **Current Behavior**: How it looks/works now
+- **Proposed Behavior**: How it should look/work
+- **Screenshot**: `.playwright-mcp/backlog-ux-XXX-current.png` (if captured)
+- **UX Best Practices**: (from research if relevant)
+- **Affected Components**:
+  - `path/to/Component.tsx` - changes needed
+- **Implementation Notes**: Technical considerations
+```
+
+---
+
+## On Exit
+
+When user says "done", provide summary:
+```
+Backlog session complete. Added X items:
+- BUG-XXX: title
+- ENH-XXX: title
+- UX-XXX: title
+
+Run /backlog again to add more items.
+```
+
+Close any open Playwright browser: `mcp__playwright__browser_close`
+
+---
+
+**Backlog mode active.** Describe a bug or improvement to document.
+
+---
+
+I think we need sub-modes for the kAuto flight mode. Because there are a lot of different things that the auto mode could be covering: normal waypoint mission, return-to-launch, takeoff, landing, landing abort, etc. These should all be under the kAuto umbrella. This allows us to handle takeoff and landing and fully separate entities, not mixed in with the regular waypoint mission following.
+
+---
+
+There should be three landing approach strategies:
+1. with lidar AGL (precise flare)
+2. without lidar agl, with terrain (conservative flare)
+3. without lidar agl, without terrain (no flare)
+
+---
+
+For the hand-launch, the motor needs to start before the launch. otherwise the thrower has no idea if the aircraft is ready or not. either that, or we need some sort of actuator signal. maybe send oscilatting roll commands for a few seconds. whatever it is, there should be a distinct function that handles alerting the pilot that the UAV is ready for launch, and it can't involve additional hardware like a buzzer or LED
+
+---
+
+looks good
+
+---
+
+done
+
+---
+
+# Plan Command
+
+Plan a new feature or task with proper structure before implementation.
+
+**Reference skills based on feature type:**
+- API/backend: Read `.claude/skills/api-design-patterns/SKILL.md`
+- React components: Read `.claude/skills/react-patterns/SKILL.md`
+- UI styling: Read `.claude/skills/tailwind-conventions/SKILL.md`
+- Error handling: Read `.claude/skills/error-handler/SKILL.md`
+- TDD mode: Read `.claude/skills/test-generator/SKILL.md`
+
+**For new projects:** Use `/greenfield` first to define specs, then `/plan` for implementation.
+
+## Flags
+
+- `--tdd` - Enable Test-Driven Development mode (write tests first)
+
+## Validation
+
+If no feature description provided, ask for one.
+
+## Planning Steps
+
+### 1. Gather Context (REQUIRED)
+
+**You MUST read relevant files before creating a plan.** Don't plan based on assumptions.
+
+Before planning:
+- Read relevant CLAUDE.md files
+- **Read the actual files** that will be modified
+- Identify existing patterns and conventions
+- Understand related code and dependencies
+
+Use `Explore` agent or direct file reads to understand:
+- Current implementation
+- Existing patterns in similar code
+- Test file locations and patterns
+
+### 2. Requirements Clarification
+
+Ask clarifying questions if needed:
+- What is the expected behavior?
+- What are the edge cases?
+- What are the acceptance criteria?
+- Are there performance requirements?
+
+### 3. Create Plan
+
+Structure the implementation with **specific details**:
+
+**Detail Level Guidelines:**
+
+| Change Type | Detail Level |
+|-------------|--------------|
+| Complex/risky changes | Line numbers + code snippets |
+| Medium changes | Function/method names |
+| Simple/obvious changes | File paths only |
+| New files | File path + structure outline |
+
+**Output Format:**
+```
+## Feature: [description]
+
+### Requirements
+- [ ] Requirement 1
+- [ ] Requirement 2
+
+### Technical Approach
+1. Step 1 - [description]
+   - Why: [reasoning for this approach]
+2. Step 2 - [description]
+
+### Files to Modify
+
+#### `path/to/file.ts` (lines 45-67)
+**Current:** [brief description of current state]
+**Change:** [what will change]
+```typescript
+// Example of the change (for complex modifications)
+function existingFunction() {
+  // Add: new caching logic here
+}
+```
+
+#### `path/to/new-file.ts` (NEW)
+**Purpose:** [why this file is needed]
+**Structure:**
+- `functionA()` - [purpose]
+- `functionB()` - [purpose]
+
+### Dependencies
+- [list any new dependencies]
+
+### Testing Strategy
+- Unit tests: [specific test cases]
+- Integration tests: [approach]
+- Test file: `path/to/tests/file.test.ts`
+
+### Alternatives Considered
+- [Alternative 1] - [why not chosen]
+
+### Risks
+- [potential issue] - [mitigation]
+
+### Complexity
+- [low/medium/high] - [justification]
+```
+
+### 4. TDD Mode (if --tdd flag)
+
+When `--tdd` is specified, modify the plan to include:
+
+```
+### TDD Implementation Order
+
+1. **Acceptance Criteria → Test Cases**
+   - [ ] Test: [criteria 1 as test]
+   - [ ] Test: [criteria 2 as test]
+
+2. **Write Failing Tests First**
+   Files to create/modify:
+   - `__tests__/feature.test.ts` - [test descriptions]
+
+3. **Implement to Pass Tests**
+   - Implement minimum code to pass each test
+   - Run tests after each change
+
+4. **Refactor**
+   - Clean up while keeping tests green
+```
+
+**TDD Workflow:**
+```
+Write test → Run (FAIL) → Implement → Run (PASS) → Refactor → Run (PASS)
+```
+
+### 5. Confidence Check
+
+Run Pre-Implementation Confidence Check before proceeding.
+
+### 6. Await Approval
+
+Present plan and wait for user approval before implementation.
+
+**Key review points for user:**
+- Are the file changes correct?
+- Is the approach sound?
+- Any concerns about the changes?
+
+## Example (Standard)
+
+```
+## Feature: Add rate limiting to API
+
+### Requirements
+- [ ] Limit requests to 100/minute per user
+- [ ] Return 429 when exceeded
+- [ ] Log rate limit hits
+
+### Technical Approach
+1. Add rate limiting middleware using existing Express pattern
+   - Why: Consistent with authMiddleware.ts approach
+2. Store counters in Redis (already used for sessions)
+
+### Files to Modify
+
+#### `src/middleware/rateLimitMiddleware.ts` (NEW)
+**Purpose:** Rate limiting middleware
+**Structure:**
+- `rateLimiter()` - Express middleware
+- `getRateKey()` - Generate Redis key
+
+#### `src/app.ts` (line 23)
+**Current:** Auth middleware only
+**Change:** Add rate limiter after auth
+```typescript
+app.use(authMiddleware);
+app.use(rateLimiter({ limit: 100, window: 60 })); // ADD
+```
+
+### Testing Strategy
+- Unit tests: Mock Redis, test limit logic
+- Integration tests: Hit endpoint 101 times
+- Test file: `__tests__/middleware/rateLimitMiddleware.test.ts`
+
+### Alternatives Considered
+- express-rate-limit package - Adds dependency, we can do simpler
+
+### Risks
+- Redis connection issues - Fail open (allow requests)
+
+### Complexity
+- Medium - New middleware but follows existing patterns
+```
+
+## Example (TDD Mode)
+
+```
+/plan --tdd Add rate limiting to API
+```
+
+```
+## Feature: Add rate limiting to API (TDD)
+
+### TDD Implementation Order
+
+1. **Acceptance Criteria → Test Cases**
+   - [ ] Test: Returns 200 for requests under limit
+   - [ ] Test: Returns 429 when limit exceeded
+   - [ ] Test: Resets after window expires
+   - [ ] Test: Different users have separate limits
+
+2. **Write Failing Tests First**
+   File: `__tests__/middleware/rateLimitMiddleware.test.ts`
+   ```typescript
+   describe('rateLimiter', () => {
+     it('allows requests under limit', async () => { ... });
+     it('returns 429 when limit exceeded', async () => { ... });
+     it('resets after window expires', async () => { ... });
+   });
+   ```
+
+3. **Implement to Pass Tests**
+   - Create `rateLimitMiddleware.ts`
+   - Implement `rateLimiter()` function
+   - Run tests after each addition
+
+4. **Refactor**
+   - Extract Redis key generation
+   - Add JSDoc comments
+```
+
+## Next Steps
+
+After approval:
+- If `--tdd`: Write tests first, then implement
+- Otherwise: Start implementation
+- Use `/review` for code review
+- Use `/validate` to verify before completion
+- Use `/ship` when ready to commit
+
+
+ARGUMENTS: Okay, given that we want to get to ENH-072 as soon as possible, are there any items in the backlog that we should tackle first?
+
+---
+
+yes
+
+---
+
+# Slop Command
+
+Check the diff against main and remove all AI-generated slop introduced in this branch.
+
+## What is "Slop"?
+
+AI-generated code often has tells that make it look unnatural:
+
+### 1. Over-Commenting
+```typescript
+// BAD: AI slop
+// Get the user from the database
+const user = await db.getUser(id); // Fetch user by ID
+
+// GOOD: Self-documenting, no comment needed
+const user = await db.getUser(id);
+```
+
+### 2. Defensive Overkill
+```typescript
+// BAD: Unnecessary defensive checks
+function processUser(user: User) {
+  if (!user) {
+    throw new Error('User is required');
+  }
+  if (!user.id) {
+    throw new Error('User must have an id');
+  }
+  // ... when caller already validates
+}
+
+// GOOD: Trust internal callers
+function processUser(user: User) {
+  // Just do the work - caller handles validation
+}
+```
+
+### 3. Type Escapes
+```typescript
+// BAD: Casting to escape type issues
+const data = response as any;
+const items = (result as unknown as Item[]);
+
+// GOOD: Fix the actual type
+const data: ResponseType = response;
+```
+
+### 4. Inconsistent Style
+- Different naming conventions than the file uses
+- Different error handling patterns
+- Different import styles
+- Added JSDoc when file doesn't use it (or vice versa)
+
+### 5. Unnecessary Try/Catch
+```typescript
+// BAD: Wrapping things that don't throw
+try {
+  const x = a + b;
+  return x;
+} catch (error) {
+  console.error('Failed to add numbers', error);
+  throw error;
+}
+
+// GOOD: Just do it
+return a + b;
+```
+
+### 6. Verbose Logging
+```typescript
+// BAD: Logging everything
+console.log('Starting process...');
+console.log('User ID:', userId);
+console.log('Processing...');
+console.log('Done!');
+
+// GOOD: Log meaningful events only (or nothing for simple ops)
+```
+
+## Workflow
+
+### 1. Get the Diff
+
+```bash
+git diff main...HEAD
+```
+
+Identify all files changed in this branch.
+
+### 2. For Each Changed File
+
+1. Read the FULL file (not just the diff) to understand existing patterns
+2. Compare new code against existing style:
+   - Comment density
+   - Error handling approach
+   - Naming conventions
+   - Type annotation style
+   - Import organization
+
+### 3. Identify Slop
+
+Look for code that:
+- Has MORE comments than surrounding code
+- Has MORE defensive checks than similar code paths
+- Uses `any` or type assertions
+- Has different formatting/style than the file
+- Adds try/catch around non-throwing code
+- Adds logging that doesn't match file patterns
+
+### 4. Fix It
+
+Remove or adjust:
+- Delete unnecessary comments
+- Remove redundant validation (if callers are trusted)
+- Fix types properly instead of casting
+- Match existing code style
+- Remove pointless try/catch
+- Remove excessive logging
+
+**Use Edit tool to make changes.**
+
+### 5. Report
+
+End with a **1-3 sentence summary only**:
+
+```
+Removed 4 unnecessary comments, 2 redundant null checks, and fixed
+1 `any` cast in UserService.ts. Deleted try/catch wrapper in
+processPayment() since the caller handles errors.
+```
+
+## What NOT to Remove
+
+- Comments that explain non-obvious business logic
+- Validation at system boundaries (user input, external APIs)
+- Error handling that matches the file's existing patterns
+- Logging that matches existing patterns
+- Type assertions that are genuinely necessary
+
+## Example
+
+**Before (AI slop):**
+```typescript
+/**
+ * Fetches user data from the database
+ * @param userId - The ID of the user to fetch
+ * @returns The user object or null if not found
+ */
+async function getUser(userId: string): Promise<User | null> {
+  // Validate the user ID
+  if (!userId) {
+    throw new Error('userId is required');
+  }
+
+  try {
+    // Fetch the user from database
+    const user = await db.users.findOne({ id: userId });
+
+    // Return the user
+    return user as any as User;
+  } catch (error) {
+    // Log the error
+    console.error('Failed to fetch user:', error);
+    throw error;
+  }
+}
+```
+
+**After (cleaned):**
+```typescript
+async function getUser(userId: string): Promise<User | null> {
+  return db.users.findOne({ id: userId });
+}
+```
+
+**Report:** "Removed JSDoc (file doesn't use it), deleted redundant userId validation (TypeScript enforces it), removed try/catch (caller handles errors), fixed `any` cast by using proper return type."
+
+## Notes
+
+- Run AFTER implementation, before /review
+- Focuses on style consistency, not functionality
+- Be conservative - when unsure, leave it
+- Check git diff after to verify changes make sense
+
+---
+
+Base directory for this skill: /home/ubuntu/.claude/skills/cp-review
+
+# Code Review
+
+Review all changes on the current branch against main.
+
+## Process
+
+### 1. Gather Changes
+
+```bash
+git diff main --name-only
+```
+
+If no changes, inform the user and stop.
+
+For each changed file, read the FULL file (not just the diff) to understand context. Also run:
+
+```bash
+git diff main
+```
+
+### 2. Review Against Guidelines
+
+#### Code Reads Like Prose
+- Descriptive function and variable names — no abbreviations that require mental decoding
+- Linear data flows — can you read top-to-bottom without jumping around?
+- Efficient line count — no bloat, no unnecessary abstractions
+- DRY — is anything duplicated that shouldn't be?
+- Single responsibility — each function does ONE thing, each class has ONE purpose
+- Testable — could you write a test for this without mocking half the system?
+
+#### Make Invalid States Unrepresentable
+- Constraints encoded in types, not runtime checks
+- No scattered validation for the same invariant
+- `std::optional`, enums, and constructors used to enforce validity
+
+#### Trace the Data
+- Where does each value come from? What constraints does it carry?
+- Are there redundant conversions or unnecessary intermediates?
+- Does every downstream consumer get what it expects?
+
+#### Always Make It Better
+- Did we touch code without improving it?
+- Are there obvious improvements just outside the diff boundary? (note in suggestions, don't block)
+
+#### Project Conventions (from CLAUDE.md)
+- No docstrings unless asked
+- No fallbacks — code works or fails loudly
+- No dead code, no commented-out experiments
+- No default arguments
+- Leading underscores for class data members
+- PascalCase functions, snake_case locals, kCamelCase constants
+- "latest" not "last" for most recent values
+- Parameter passing: pointer for mutation, const ref for read-only, const value for scalars
+
+### 3. Check For Slop
+- Comments that explain "what" instead of "why"
+- Defensive checks for conditions that can't happen
+- Unnecessary try/catch or error handling beyond system boundaries
+- Verbose logging that doesn't match existing patterns
+- Style inconsistencies with surrounding code
+
+### 4. Present Results
+
+```
+## Review Summary
+
+**Assessment**: [APPROVE / REQUEST CHANGES]
+
+### Positive Findings
+- What was done well
+
+### Required Changes
+- Issues that must be fixed (file:line references)
+
+### Suggestions
+- Optional improvements
+
+### Convention Violations
+- Any CLAUDE.md or guideline violations
+```
+
+Be specific with file:line references. Prioritize correctness and readability over micro-optimizations. If approved, suggest running `/validate-smol` next.
+
+---
+
+Base directory for this skill: /home/ubuntu/Documents/Github/smol/.claude/skills/validate-smol
+
+# Validate smol
+
+Run all automated checks for the smol flight controller. Activate `~/.venvs/smol` before every command.
+
+**CRITICAL**: Capture the FULL output of every command. Never re-run a command just to see which tests failed — read the output you already have. Use `2>&1` to merge stderr, and save long outputs to a file if needed.
+
+## Checks
+
+Run these in order. If a check fails, stop and report — do not continue to later checks.
+
+### 1. Regenerate and format
+
+Regenerate all generated files and run the formatter. This ensures we never commit stale generated code or unformatted source.
+
+```bash
+python3 protocol/generate.py && just format && just check-format && just check-codegen
+```
+
+Both checks must pass. Generated files (`src/protocol/`) are excluded from formatting — the generator owns their style.
+
+### 2. Native unit tests
+
+```bash
+just test-native 2>&1 | tee /tmp/smol-test-native.txt
+```
+
+Read the FULL output to find failures. Do NOT re-run just to see which tests failed.
+
+Report pass/fail count from the summary line (e.g., "118 test cases: 118 succeeded").
+
+Known flaky: `test_smol_matches_full_after_full_sequence` (BUG-006, FullEkf nondeterminism). If ONLY this test fails, re-run once. If it fails twice, report it.
+
+### 3. Thread sanitizer
+
+```bash
+just test-tsan 2>&1 | tee /tmp/smol-test-tsan.txt
+```
+
+Catches data races in SharedState, ring buffer, and cross-thread communication. Requires `setarch -R` for ASLR compatibility on Linux 6.x.
+
+### 4. Elixir GCS tests
+
+```bash
+just test-gcs 2>&1 | tee /tmp/smol-test-gcs.txt
+```
+
+### 5. Native build
+
+```bash
+just build-native
+```
+
+### 6. RP2350B build (CMake)
+
+```bash
+just build-fc3
+```
+
+This catches missing source files in `CMakeLists.txt` and RP2350B-specific compilation errors that native builds miss.
+
+### 7. Replay validation
+
+```bash
+just test-replay 2>&1 | tee /tmp/smol-test-replay.txt
+```
+
+This builds `native_full_ekf`, replays reference flight data through both EKFs, and checks RMS error bounds vs truth. Requires steps 4-5 to have passed.
+
+## Report
+
+```
+## Validation Report
+
+### Regenerate + format
+[PASS — tree clean / PASS — N files updated / FAIL — details]
+
+### Native tests
+[PASS — N test cases: N succeeded / FAIL — details]
+
+### Thread sanitizer
+[PASS / FAIL — details]
+
+### GCS tests
+[PASS — N tests: N passed / FAIL — details]
+
+### Native build
+[PASS / FAIL]
+
+### RP2350B build
+[PASS / FAIL — details if failed]
+
+### Replay validation
+[PASS — N passed / FAIL — details]
+
+### Summary
+[READY TO SHIP / NEEDS FIXES — list what failed]
+```
+
+## Next Steps
+
+- All pass: `/ship` to commit
+- Failures: fix and re-run `/validate-smol`
+
+---
+
+Base directory for this skill: /home/ubuntu/.claude/skills/ship-pr
+
+# Ship PR
+
+Create a feature branch from the current branch, commit all changes, push, and open a PR.
+
+## Pre-flight
+
+Verify we have changes to ship:
+
+```bash
+git status
+git diff --stat
+git diff --cached --stat
+```
+
+If there are no changes (staged or unstaged, tracked or untracked), stop and inform the user.
+
+## Gather Context
+
+```bash
+git branch --show-current
+git log --oneline -5
+```
+
+The current branch becomes the PR's **base branch** (the branch to merge into). If already on a feature branch, ask the user if they want to PR into the branch they branched from instead.
+
+## Steps
+
+### 1. Determine branch name and commit message
+
+If the user provided arguments, use them to derive:
+- **Branch name**: kebab-case, prefixed with `feat/`, `fix/`, or `refactor/` based on the change type. Max 50 chars.
+- **Commit message**: conventional commit format from the same description.
+
+If no arguments provided, analyze the diff to determine both:
+- Read `git diff` and `git diff --cached` and any untracked files
+- Classify the change (feat, fix, refactor, docs, test, chore)
+- Draft a branch name and commit message
+
+**Show the user the proposed branch name and commit message before proceeding.** Wait for approval.
+
+### 2. Create branch and commit
+
+```bash
+git checkout -b <branch-name>
+```
+
+Stage all relevant files. **Do NOT stage:**
+- `.env` files or credentials
+- Large binary files unless they're clearly intentional (e.g., `.uf2` firmware)
+
+```bash
+git add <specific files>
+git commit -m "<message>
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
+```
+
+Use a HEREDOC for multi-line commit messages.
+
+### 3. Push
+
+```bash
+git push -u origin <branch-name>
+```
+
+### 4. Create PR
+
+```bash
+gh pr create --base <base-branch> --title "<title>" --body "$(cat <<'EOF'
+## Summary
+<1-3 bullet points describing the changes>
+
+## Test plan
+<How the changes were validated>
+
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+```
+
+The PR body should summarize what changed and how it was tested. Reference any validation output if `/validate-smol` or similar was run.
+
+### 5. Report
+
+```
+PR created: <url>
+Branch: <branch-name> → <base-branch>
+```
+
+## Safety Rules
+
+- **Never force push**
+- **Never push to main/master directly** — always create a branch
+- **Always show the branch name and commit message before creating them**
+- **If the user is already on a feature branch with commits**, ask whether to create a new branch or use the current one
+- Stage files explicitly — never use `git add -A` or `git add .`
+
+---
+
+Base directory for this skill: /home/ubuntu/.claude/skills/cp-pr-fetcher
+
+Run the helper script to fetch all PR comments since the latest commit:
+
+```bash
+~/.claude/skills/cp-pr-fetcher/scripts/fetch_pr_comments.sh
+```
+
+Then process the output:
+
+1. Parse the issue comments, review comments, and review summaries from the script output.
+2. Itemize the list of comments in descending order, with the highest priority comments first.
+3. For each comment, include its author and assess if it is a valid comment. If it is valid, provide a detailed description of how you would address the comment.
+
+---
+
+looking at the controller, I agree with gemini. it doesn't make sense how we're doing it. it should be much simpler. there should be a maximum cog error and altitude error, and our command needs to be bound by them. we don't need to know the roll and pitch limits, those will be handled by the attitude controller. the cruise controller shouldn't try to be so smart.
+
+---
+
+constants are fine. cruise mode is more of a debugging mode, it doesn't need to be fulling modifieable
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+split up the cruisecontroller::update function into smaller functions, one for course and one for altitude. make it read like prose
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+there's a lot of deadband logic that is repeated for both functions. make it dry:
+  bool in_deadband = pitch_stick.InDeadband(kDeadbandThreshold);
+  if (in_deadband && !_pitch_was_in_deadband) {
+    _target_altitude_m = current_altitude_m;
+  }
+  _pitch_was_in_deadband = in_deadband;
+
+  if (in_deadband) {
+    return _target_altitude_m;
+  }
+
+---
+
+[Request interrupted by user]
+
+---
+
+UpdateAndHeld is strange name. describe more what's going on in this function?
+
+---
+
+so, the function is doing two things. functions should really only to one thing.
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+now IsHead is just wrapping InDeadband. that's a useless function.
+
+---
+
+[Request interrupted by user]
+
+---
+
+_heading and _altitude aren't good names. What do these really contain? DeadbandHol also isn't a good name. You need to improve the variable names throughout this class. Remember, be descriptive.
+
+---
+
+you're double checking deadband now:
+  _captured_course_deg.CaptureIfEnteringDeadband(rc.roll, current_course_deg);
+  _captured_altitude_m.CaptureIfEnteringDeadband(rc.pitch, current_altitude_m);
+
+  float course_cmd_deg =
+      rc.roll.InDeadband(kDeadbandThreshold)
+          ? _captured_course_deg.value
+          : ConstrainAngleToCompassDeg(current_course_deg + rc.roll.Value() * kMaxCourseErrorDeg);
+
+  float altitude_cmd_m = rc.pitch.InDeadband(kDeadbandThreshold)
+                             ? _captured_altitude_m.value
+                             : current_altitude_m + rc.pitch.Value() * kMaxAltitudeErrorM;
+
+---
+
+[Request interrupted by user]
+
+---
+
+you're double checking deadband now:
+  _captured_course_deg.CaptureIfEnteringDeadband(rc.roll, current_course_deg);
+  _captured_altitude_m.CaptureIfEnteringDeadband(rc.pitch, current_altitude_m);
+
+  float course_cmd_deg =
+      rc.roll.InDeadband(kDeadbandThreshold)
+          ? _captured_course_deg.value
+          : ConstrainAngleToCompassDeg(current_course_deg + rc.roll.Value() * kMaxCourseErrorDeg);
+
+  float altitude_cmd_m = rc.pitch.InDeadband(kDeadbandThreshold)
+                             ? _captured_altitude_m.value
+                             : current_altitude_m + rc.pitch.Value() * kMaxAltitudeErrorM;
+
+You need a full rewrite of the cruise controller. start over, make it DRY. the course and altitude updates follow the same pattern.
+
+---
+
+you're still burying two types of logic in the Compute function. I've made a few changes to Update. re-read, and find a way to separate the concerns. don't feel like you need to do so much with each line of code. make it read like prose!
+
+---
+
+# Ship Command
+
+Commit validated changes with proper formatting.
+
+## Pre-Ship Checks
+
+**Verify validation passed:**
+- Has `/validate` been run?
+- Were there any failures?
+
+**Check git status:**
+On branch feat/enh-061-cruise-controller-cleanup
+Your branch is up to date with 'origin/feat/enh-061-cruise-controller-cleanup'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   src/control/cascade_controller.cpp
+	modified:   src/control/cruise_controller.cpp
+	modified:   src/control/cruise_controller.h
+	modified:   test/test_cruise_controller/test_cruise_controller.cpp
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+## Gather Information
+
+**Staged changes:**
+(Bash completed with no output)
+
+**Recent commits for style:**
+9b128849 feat(control): attitude-based cruise controller with deadband snap (ENH-061)
+bc3f8c84 fix(ekf): resolve BUG-066 east position bias (#69)
+ebb6a00c feat(gcs): capture path display, fix GetState kCapture hide (ENH-065) (#68)
+f0026204 feat(core): ETL event bus, replace all ring buffers (ENH-064) (#67)
+88d59cee Merge pull request #66 from copperpunk/feat/capture-leg
+
+**Current branch:**
+feat/enh-061-cruise-controller-cleanup
+
+## Generate Commit
+
+### Analyze Changes
+
+Based on the diff, determine:
+- **Type**: feat, fix, docs, style, refactor, test, chore
+- **Scope**: Component or module affected
+- **Subject**: What the commit does (imperative mood)
+
+### Commit Format
+
+```
+type(scope): subject
+
+Body explaining why this change was made.
+- Detail 1
+- Detail 2
+
+🤖 Generated with Claude Code
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+### If Argument Provided
+
+Use  as the commit message subject.
+
+## Execute Commit
+
+**Stage all changes (if not already staged):**
+Ask user before staging untracked files.
+
+**Create commit:**
+```bash
+git commit -m "$(cat <<'EOF'
+[generated message]
+EOF
+)"
+```
+
+**Verify success:**
+9b128849 feat(control): attitude-based cruise controller with deadband snap (ENH-061)
+
+## Report
+
+```
+## Ship Complete
+
+✅ Commit created successfully
+
+**Commit:** [hash]
+**Message:** [subject]
+**Files changed:** [count]
+
+### Next Steps
+- Push to remote: `git push`
+- Create PR: `gh pr create`
+- Continue developing
+```
+
+## Safety Rules
+
+- Never force push
+- Never push to main/master without approval
+- Always verify commit authorship before amend
+- Report any pre-commit hook failures
+
+---
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   The user's session covered multiple tasks:
+   - **PR #69 (BUG-066)**: Address Gemini review feedback (noalias, kInvGateSq), fix EKF state persistence across HIL replays, add overrun diagnostics to timing report
+   - **PR #69 second review**: Evaluate Gemini's sequential innovation recomputation suggestion against PX4/ArduPilot precedent
+   - **Backlog management**: Move closed items to COMPLETED_BACKLOG.md, create ENH-072 (autonomous takeoff/landing) with detailed architecture
+   - **ENH-072 prioritization**: Determine which backlog items to tackle first before ENH-072
+   - **ENH-061 implementation**: Refactor cruise controller from rate-accumulation to attitude-based commands with deadband snap. User provided extensive iterative feedback on code quality, naming, DRY principles, and separation of concerns
+
+2. Key Technical Concepts:
+   - **EKF Reset**: Static global `FlightLoop` on RP2350B persisted EKF state across consecutive HIL replays, causing cumulative position drift
+   - **Eigen noalias()**: Eliminates temporary 21×21 matrix allocation in GPS fusion rank-1 update
+   - **PX4 sequential GPS fusion**: Uses pre-computed innovations (not recomputed between scalar updates), matching smol's approach
+   - **Auto sub-modes**: `FlightMode::kAuto` becomes a dispatch layer over kMission, kTakeoff, kLanding, kLandingAbort, kReturnToLaunch
+   - **Three landing approach strategies**: Lidar AGL (precise flare), terrain model (conservative flare), no terrain/no lidar (no flare)
+   - **Deadband snap pattern**: On stick entering deadband, capture current value as hold target. Edge detection via `in_deadband && !was_in_deadband`
+   - **CapturedTarget struct**: DRY abstraction for deadband capture logic, reused for both course and altitude axes
+   - **Separation of concerns**: Cruise controller commands error bounds (kMaxCourseErrorDeg, kMaxAltitudeErrorM), not attitude limits — downstream PIDs handle attitude
+
+3. Files and Code Sections:
+
+   - **`src/estimation/ekf/smol_ekf.cpp`**
+     - GPS fusion optimizations per review feedback
+     - Added `constexpr float kInvGateSq`, changed `P.noalias() -=`
+   
+   - **`src/estimation/ekf/ekf_base.h`**
+     - Added `void Reset()` declaration
+
+   - **`src/estimation/ekf/ekf_base.cpp`**
+     - Added `EkfBase::Reset()` — clears all 25+ state fields back to post-construction defaults including `_phase = Phase::kUninitialized`
+
+   - **`src/core/flight_loop.cpp`**
+     - Added `_ekf.Reset()` call in `FlightLoop::Init()` before `SetConfig()`
+
+   - **`scripts/hil_replay.py`**
+     - Enhanced `print_timing_report` to show sim time and top subsystem for each overrun
+     - Removed unused `overruns` variable (flake8 fix)
+
+   - **`src/control/cruise_controller.h`** (final state):
+     ```cpp
+     #pragma once
+     #include "control/control_types.h"
+     #include "control/rc_input.h"
+     #include "dubins/types.h"
+
+     class CruiseController {
+       static constexpr float kDeadbandThreshold = 0.05f;
+       static constexpr float kMaxCourseErrorDeg = 30.0f;
+       static constexpr float kMaxAltitudeErrorM = 5.0f;
+
+      public:
+       void Init();
+       void RefreshGains();
+       void CaptureCourse(const float course_deg);
+       void CaptureAltitude(const float altitude_m);
+       dubins::FollowerOutput Update(const RcInput& rc, const float current_course_deg,
+                                     const float current_altitude_m);
+
+      private:
+       struct CapturedTarget {
+         float value = 0.0f;
+         bool was_in_deadband = true;
+         void CaptureIfEntering(const Bidirectional& stick, const float current_value);
+       };
+
+       float _speed_min_mps = 0.0f;
+       float _speed_max_mps = 0.0f;
+       CapturedTarget _captured_course_deg;
+       CapturedTarget _captured_altitude_m;
+     };
+     ```
+
+   - **`src/control/cruise_controller.cpp`** (final state):
+     ```cpp
+     #include "control/cruise_controller.h"
+     #include "param/param_store.h"
+     #include "platform/nav_math.h"
+
+     void CruiseController::CapturedTarget::CaptureIfEntering(const Bidirectional& stick,
+                                                              const float current_value) {
+       bool in_deadband = stick.InDeadband(kDeadbandThreshold);
+       if (in_deadband && !was_in_deadband) {
+         value = current_value;
+       }
+       was_in_deadband = in_deadband;
+     }
+
+     void CruiseController::Init() {
+       _captured_course_deg = {};
+       _captured_altitude_m = {};
+       RefreshGains();
+     }
+
+     void CruiseController::RefreshGains() {
+       _speed_min_mps = params::Get<ParamIndex::kAirspeedMin>();
+       _speed_max_mps = params::Get<ParamIndex::kAirspeedMax>();
+     }
+
+     void CruiseController::CaptureCourse(const float course_deg) {
+       _captured_course_deg.value = course_deg;
+     }
+
+     void CruiseController::CaptureAltitude(const float altitude_m) {
+       _captured_altitude_m.value = altitude_m;
+     }
+
+     dubins::FollowerOutput CruiseController::Update(const RcInput& rc, const float current_course_deg,
+                                                     const float current_altitude_m) {
+       _captured_course_deg.CaptureIfEntering(rc.roll, current_course_deg);
+       _captured_altitude_m.CaptureIfEntering(rc.pitch, current_altitude_m);
+
+       float course_cmd_deg = rc.roll.InDeadband(kDeadbandThreshold)
+                                  ? _captured_course_deg.value
+                                  : current_course_deg + rc.roll.Value() * kMaxCourseErrorDeg;
+       float altitude_cmd_m = rc.pitch.InDeadband(kDeadbandThreshold)
+                                  ? _captured_altitude_m.value
+                                  : current_altitude_m + rc.pitch.Value() * kMaxAltitudeErrorM;
+       float speed_cmd_mps = _speed_min_mps + rc.throttle.Value() * (_speed_max_mps - _speed_min_mps);
+
+       return dubins::FollowerOutput{
+           .course_cmd_deg = ConstrainAngleToCompassDeg(course_cmd_deg),
+           .altitude_cmd_m = altitude_cmd_m,
+           .speed_cmd_mps = speed_cmd_mps,
+       };
+     }
+     ```
+
+   - **`src/control/control_types.h`**
+     - Added `InDeadband` to `Bidirectional`:
+     ```cpp
+     struct Bidirectional : BoundedFloat<-1.0f, 1.0f> {
+       using BoundedFloat::BoundedFloat;
+       constexpr bool InDeadband(const float threshold) const {
+         return Value() > -threshold && Value() < threshold;
+       }
+     };
+     ```
+
+   - **`src/control/cascade_controller.cpp`**
+     - Updated cruise mode dispatch: `CaptureHeading` → `CaptureCourse`, removed `dt_s` from Update call
+
+   - **`src/param/param_store.h`**
+     - Removed `CrsCogRate` ("CRS_COG_RATE", 45.0f) and `CrsClimbRate` ("CRS_CLIMB_RATE", 3.0f)
+
+   - **`test/test_cruise_controller/test_cruise_controller.cpp`**
+     - 20 tests: 4 deadband, 6 angle diff, 2 speed, 4 course (hold, max error, half error, snap), 4 altitude (hold, max up, max down, snap)
+     - Tests use hardcoded values matching constants: 30° course error, 5m altitude error
+
+   - **`docs/BACKLOG.md`**
+     - Moved 8 closed items out, added ENH-072, updated stats to 11 open / 0 bugs / 68 completed
+
+   - **`docs/COMPLETED_BACKLOG.md`**
+     - Added BUG-066, BUG-057, ENH-052, ENH-058, ENH-059, ENH-060, ENH-064, ENH-065
+
+4. Errors and fixes:
+   - **flake8 F841**: Unused `overruns` variable in hil_replay.py after refactoring overrun display. Fixed by removing the line.
+   - **HIL replay 340km position error**: Board output started with lat=0 pre-GPS-fix. Already fixed in shared `rms_check.compute_rms` from prior session.
+   - **Consecutive HIL replay drift (72m → 156m)**: Static `FlightLoop` global never reset EKF between replays. Fixed by adding `EkfBase::Reset()` called from `FlightLoop::Init()`.
+   - **Cruise controller saturation**: Gemini correctly identified that using attitude limits as scaling caused premature stick saturation (67% for heading, 25% for altitude). User directed: "it should be much simpler... there should be a maximum cog error and altitude error." Fixed by replacing attitude-limit scaling with bounded error constants.
+   - **Compile error `altitude_cmd_deg` not declared**: User had renamed the local variable but the return statement still referenced old name. Fixed by changing `.altitude_cmd_m = altitude_cmd_deg` to `.altitude_cmd_m = altitude_cmd_m`.
+   - **Double-checking deadband**: After splitting CaptureIfEntering and IsHeld, both called InDeadband separately. User pointed this out. Eventually resolved by having CaptureIfEntering own only the state tracking, and using InDeadband directly in Update's ternaries.
+   - **Naming iterations**: User gave repeated feedback: "UpdateAndHeld is strange name", "IsHeld just wraps InDeadband — useless function", "_heading and _altitude aren't good names", "you're burying two types of logic in Compute". Each round improved naming and separation of concerns.
+
+5. Problem Solving:
+   - **EKF state persistence across replays**: Diagnosed by observing growing errors (0.6→72→156m) across consecutive runs with identical firmware. Root cause: static global `FlightLoop` with no EKF reset. Solution: `EkfBase::Reset()` method.
+   - **PX4 sequential fusion validation**: Traced PX4 source code through `fuseVelocity` → `fuseDirectStateMeasurement` to confirm pre-computed innovations (not recomputed). Validated our approach matches production systems.
+   - **Cruise controller architecture**: Through 6+ iterations of user feedback, arrived at clean design: CapturedTarget struct owns deadband state tracking, Update owns command computation, constants define error bounds (not attitude limits).
+
+6. All user messages:
+   - "yes" (apply Gemini review suggestions noalias + kInvGateSq)
+   - "I just ran the same test, and it failed. that's strange: [board test output showing 340km errors]"
+   - "1. I flashed the latest firmware 2. I ran the test-board command, and the test passed 3. You made changes to hil_replay (which don't affect the board at all) 4. I ran the test-board command again, and the test failed"
+   - "It got even worse. My guess is that something is persisting on the board between runs. I bet if I reset the board, it will pass the test: [worse output]"
+   - "Consecutive runs now behave identically. And we're getting the overrun in the same place. Is there a way to alleviate this without regressing? [overrun at t=0.20s]"
+   - "it's not worth all that effort just to avoid a single overrun while the vehicle is stationary on the ground. I just wanted you to check for any possible optimizations. it appears that we're already doing the best we can"
+   - "yes" (commit and push)
+   - "/cp-pr-fetcher" (fetch PR comments, evaluate against PX4/ArduPilot)
+   - "Closed backlog items need to be moved to @docs/COMPLETED_BACKLOG.md"
+   - "/cadre:backlog" with detailed description of autonomous takeoff/landing requirements
+   - "I think we need sub-modes for the kAuto flight mode..."
+   - "There should be three landing approach strategies: 1. with lidar AGL (precise flare) 2. without lidar agl, with terrain (conservative flare) 3. without lidar agl, without terrain (no flare)"
+   - "For the hand-launch, the motor needs to start before the launch... there should be a distinct function that handles alerting the pilot..."
+   - "looks good" (approve ENH-072 backlog entry)
+   - "done" (exit backlog mode)
+   - "/cadre:plan" — "Okay, given that we want to get to ENH-072 as soon as possible, are there any items in the backlog that we should tackle first?"
+   - "yes" (start ENH-061)
+   - "/cadre:slop" (check for AI slop)
+   - "/cp-review" (code review)
+   - "/validate-smol" (full validation)
+   - "/ship-pr" (create PR #70)
+   - "/cp-pr-fetcher" (fetch Gemini review on PR #70)
+   - "looking at the controller, I agree with gemini. it doesn't make sense how we're doing it. it should be much simpler. there should be a maximum cog error and altitude error, and our command needs to be bound by them. we don't need to know the roll and pitch limits, those will be handled by the attitude controller. the cruise controller shouldn't try to be so smart."
+   - "constants are fine. cruise mode is more of a debugging mode, it doesn't need to be fully modifiable"
+   - "split up the cruisecontroller::update function into smaller functions, one for course and one for altitude. make it read like prose"
+   - "there's a lot of deadband logic that is repeated for both functions. make it dry"
+   - "UpdateAndHeld is strange name. describe more what's going on in this function?"
+   - "so, the function is doing two things. functions should really only do one thing."
+   - "now IsHeld is just wrapping InDeadband. that's a useless function."
+   - "_heading and _altitude aren't good names. What do these really contain? DeadbandHold also isn't a good name. You need to improve the variable names throughout this class. Remember, be descriptive."
+   - "you're still burying two types of logic in the Compute function... You need a full rewrite of the cruise controller. start over, make it DRY..."
+   - "you're double checking deadband now... You need a full rewrite of the cruise controller. start over, make it DRY. the course and altitude updates follow the same pattern."
+   - (After final rewrite) "/cadre:ship"
+
+7. Pending Tasks:
+   - PR #70 is open with 2 commits, pushed and awaiting merge
+   - ENH-061 backlog item needs to be marked closed after PR merges
+   - ENH-072 (autonomous takeoff/landing) is the next major feature after ENH-061 merges
+
+8. Current Work:
+   ENH-061 (cruise controller cleanup) has been implemented, reviewed, and shipped as PR #70 with two commits:
+   - `feat(control): attitude-based cruise controller with deadband snap (ENH-061)` (initial implementation with backlog changes)
+   - `refactor(control): simplify cruise controller scaling and naming` (review feedback: bounded error constants, CapturedTarget struct, improved naming)
+   
+   The PR is pushed and open at https://github.com/copperpunk/smol/pull/70. Validation passed before the first commit (379 native tests, TSan, 110 GCS tests, FC3 build, replay 2/2). The second commit was tested with cruise controller tests (20/20) and native build but not full validation.
+
+9. Optional Next Step:
+   No explicit next step requested. The PR is shipped and awaiting review/merge. After merge, the next work per the approved plan is ENH-072 step 1 (AutoSubMode enum + dispatch skeleton in CascadeController).
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /home/ubuntu/.REDACTED.jsonl
+
+---
+
+We've merged the PR and I pulled from main. It's time to implement ENH-072
+
+---
+
+can you easily make the GCS try to connect to 0.0.0.0:14550 whenever I open it locally?
+
+---
+
+Great, I flew a racetrack mission on auto without issues. what's next?
+
+---
+
+1. Create a new branch and commit. but we don't need a PR yet.
+2. CRRCSim used to have a hand-launch function. We should find a way to re-implement this, but make it a choice. In other words, we need to be able to choose whether we launch via hand-launch (which I think could be treated the same as a catapult launch, if we're just looking for a forward acceleration). we need to be able to arm the aircraft from the GCS and/or RC transmitter, and then press a key (or RC switch) in CRRCSim and launch the vehicle. let's assume that use an env variable to start CRRCSim either in runway mode or hand-launch mode.
+
+---
+
+When would the aileron-waggle be initiated? When the vehicle was in kAuto and a mission was stored, i.e., both conditions satisfied?
+
+---
+
+I think the waggle should only happen on the rising edge of an arm command. that fixes the issue you're talking about
+
+---
+
+let's go
