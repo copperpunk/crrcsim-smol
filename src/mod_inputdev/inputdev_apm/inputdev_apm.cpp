@@ -210,8 +210,10 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
     inputs->throttle = actuator.throttle;
     inputs->rudder   = -actuator.rudder;
 
-    static const char* kModeNames[] = {"Manual", "Acro", "AttHold", "Cruise", "Loiter", "Auto"};
-    Global::flightModeString = actuator.mode <= 5 ? kModeNames[actuator.mode] : "???";
+    // Keep in sync with smol's protocol/fc_mode.toml FlightMode enum.
+    static const char* kModeNames[] = {"Idle",   "Manual", "Acro",
+                                       "AttHold", "Cruise", "Autonomous"};
+    Global::flightModeString = actuator.mode < 6 ? kModeNames[actuator.mode] : "???";
 
     if (Global::aircraft->getFDM() == NULL) {
         return true;

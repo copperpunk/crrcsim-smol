@@ -49,6 +49,9 @@ If you'd like to help with CRRCSIM, then send me an email!
 *****************************************************************************/
 
 #include "i18n.h"
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
 #include <crrc_config.h>
 
 #include "global.h"
@@ -258,6 +261,12 @@ void initialize_flight_model()
   theta = cfgfile->getDouble("launch.angle", 0);
   psi = wind_direction + cfgfile->getDouble("launch.heading_offset", 0) * M_PI / 180.0;
   Altitude = cfgfile->getDouble("launch.altitude", 6);
+  if (Global::hand_launch_mode)
+  {
+    // Override config to spawn wings-level on the virtual platform.
+    Altitude = Global::hand_launch_platform_height_ft;
+    theta = 0.0;
+  }
   double zlow = Global::aircraft->getFDM()->getZLow();
   height = Global::scenery->getHeightAndPlane(posX, posY, plane);
   if(Altitude == 0)
@@ -276,10 +285,31 @@ void initialize_flight_model()
     //printf ("START theta : %.1f phi: %.1f \n",theta, phi);////
     //printf ("START h: %.1f h0: %.1f h1: %.1f h2: %.1f \n",height,h0,h1,h2);
     }
-  Altitude = Altitude + zlow + height; 
+  Altitude = Altitude + zlow + height;
   printf ("START ALTITUDE : %.1f (%.1f+%.1f)\n",Altitude,zlow,height );////
+
+  double init_velocity_rel = velocity_rel;
+  if (Global::hand_launch_mode)
+  {
+    // Convert the env-var throw velocity from m/s to CRRCSim's relative form
+    // (multiple of trim flight velocity in ft/s). The config's launch.velocity_rel
+    // is typically 0 for ground-start presets and is ignored in hand-launch mode.
+    const double trim_ftps = Global::aircraft->getFDM()->getTrimmedFlightVelocity();
+    const double throw_ftps = Global::hand_launch_throw_velocity_mps * M_TO_FT;
+    Global::hand_launch_velocity_rel = throw_ftps / trim_ftps;
+    Global::hand_launch_phi = phi;
+    Global::hand_launch_theta = theta;
+    Global::hand_launch_psi = psi;
+    Global::hand_launch_posX = posX;
+    Global::hand_launch_posY = posY;
+    Global::hand_launch_altitude = Altitude;
+    Global::hand_launch_dZRot = dZRot;
+    Global::hand_launch_thrown = false;
+    init_velocity_rel = 0.0;
+  }
+
   Global::aircraft->getFDMInterface()->initAirplaneState(
-                                 velocity_rel,
+                                 init_velocity_rel,
                                  phi,
                                  theta,
                                  psi,
@@ -299,7 +329,32 @@ void initialize_flight_model()
     header->setAttribute("airplane.graphics", config->getString("airplane.graphics", "0"));
     Global::recorder->Start(header);
     delete header;
-  }  
+  }
+}
+
+/*****************************************************************************/
+
+void throw_hand_launched_aircraft()
+{
+  if (!Global::hand_launch_mode || Global::hand_launch_thrown)
+  {
+    return;
+  }
+  Global::aircraft->getFDMInterface()->initAirplaneState(
+      Global::hand_launch_velocity_rel,
+      Global::hand_launch_phi,
+      Global::hand_launch_theta,
+      Global::hand_launch_psi,
+      Global::hand_launch_posX,
+      Global::hand_launch_posY,
+      -1 * Global::hand_launch_altitude,
+      0.0,
+      0.0,
+      Global::hand_launch_dZRot);
+  Global::hand_launch_thrown = true;
+  printf("Hand-launch: throw applied (%.2f m/s, velocity_rel=%.2f).\n",
+         Global::hand_launch_throw_velocity_mps,
+         Global::hand_launch_velocity_rel);
 }
 
 /*****************************************************************************/
@@ -692,6 +747,34 @@ int main(int argc,char **argv)
   if (crrc_checkversionopt(argc, argv))
   {
     crrc_exit(CRRC_EXIT_SUCCESS);
+  }
+
+  const char* launch_mode_env = getenv("CRRCSIM_LAUNCH_MODE");
+  Global::hand_launch_mode = (launch_mode_env != nullptr) &&
+                             (strcmp(launch_mode_env, "hand") == 0);
+  if (Global::hand_launch_mode)
+  {
+    const char* throw_vel_env = getenv("CRRCSIM_HAND_LAUNCH_VEL_MPS");
+    if (throw_vel_env == nullptr)
+    {
+      fprintf(stderr,
+              "CRRCSIM_LAUNCH_MODE=hand requires CRRCSIM_HAND_LAUNCH_VEL_MPS to be set "
+              "(throw velocity in m/s).\n");
+      return EXIT_FAILURE;
+    }
+    errno = 0;
+    char* endptr = nullptr;
+    Global::hand_launch_throw_velocity_mps = strtod(throw_vel_env, &endptr);
+    if (errno != 0 || endptr == throw_vel_env || *endptr != '\0' ||
+        Global::hand_launch_throw_velocity_mps <= 0.0)
+    {
+      fprintf(stderr,
+              "CRRCSIM_HAND_LAUNCH_VEL_MPS must be a positive number (got '%s').\n",
+              throw_vel_env);
+      return EXIT_FAILURE;
+    }
+    printf("CRRCSIM_LAUNCH_MODE=hand: aircraft will spawn stationary; press L to throw "
+           "(vel=%.2f m/s).\n", Global::hand_launch_throw_velocity_mps);
   }
 
   Global::lockFDM();
