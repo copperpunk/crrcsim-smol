@@ -49,6 +49,7 @@ If you'd like to help with CRRCSIM, then send me an email!
 *****************************************************************************/
 
 #include "i18n.h"
+#include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <crrc_config.h>
@@ -761,11 +762,15 @@ int main(int argc,char **argv)
               "(throw velocity in m/s).\n");
       return EXIT_FAILURE;
     }
-    Global::hand_launch_throw_velocity_mps = strtod(throw_vel_env, nullptr);
-    if (Global::hand_launch_throw_velocity_mps <= 0.0)
+    errno = 0;
+    char* endptr = nullptr;
+    Global::hand_launch_throw_velocity_mps = strtod(throw_vel_env, &endptr);
+    if (errno != 0 || endptr == throw_vel_env || *endptr != '\0' ||
+        Global::hand_launch_throw_velocity_mps <= 0.0)
     {
       fprintf(stderr,
-              "CRRCSIM_HAND_LAUNCH_VEL_MPS must be > 0 (got '%s').\n", throw_vel_env);
+              "CRRCSIM_HAND_LAUNCH_VEL_MPS must be a positive number (got '%s').\n",
+              throw_vel_env);
       return EXIT_FAILURE;
     }
     printf("CRRCSIM_LAUNCH_MODE=hand: aircraft will spawn stationary; press L to throw "
