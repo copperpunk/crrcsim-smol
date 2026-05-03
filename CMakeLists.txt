@@ -209,6 +209,7 @@ set(CRRCSIM_SRCS
  src/record.cpp
  src/robots.cpp
  src/SimStateHandler.cpp
+ src/sim_command_listener.cpp
  src/zoom.cpp
   )
 

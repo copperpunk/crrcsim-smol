@@ -36,8 +36,6 @@
 
 #pragma GCC optimize("O0")
 
-static std::mt19937 rng(42);
-
 T_TX_InterfaceAPM::T_TX_InterfaceAPM()
 {
     input = NULL;
@@ -115,6 +113,9 @@ int T_TX_InterfaceAPM::init(SimpleXMLTransfer* config)
     input = new APM(devicestr);
     reverse = 0;
 
+    _rng.seed(Global::rng_seed);
+    printf("  noise rng seeded with %u\n", Global::rng_seed);
+
     return 0;
 }
 
@@ -129,7 +130,7 @@ float T_TX_InterfaceAPM::gaussNoise(float sigma)
     if (!_noise.enabled || sigma <= 0.0f)
         return 0.0f;
     std::normal_distribution<float> dist(0.0f, sigma);
-    return dist(rng);
+    return dist(_rng);
 }
 
 #define degrees(r) ((r)*RAD_TO_DEG)
@@ -254,22 +255,24 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
         Global::aircraft->getFDM()->getVRelAirmass() * FEET2METERS);
     float indicated_airspeed_mps = true_airspeed_mps * sqrtf(_density_ratio);
 
-    sendImu(time_sec,
-            ax + _bias.accel_x + gaussNoise(_noise.accel_sigma),
-            ay + _bias.accel_y + gaussNoise(_noise.accel_sigma),
-            az + _bias.accel_z + gaussNoise(_noise.accel_sigma),
-            p + _bias.gyro_x + gaussNoise(_noise.gyro_sigma),
-            q + _bias.gyro_y + gaussNoise(_noise.gyro_sigma),
-            r + _bias.gyro_z + gaussNoise(_noise.gyro_sigma));
+    if (_cycle % 4 == 0) {
+        sendImu(time_sec,
+                ax + _bias.accel_x + gaussNoise(_noise.accel_sigma),
+                ay + _bias.accel_y + gaussNoise(_noise.accel_sigma),
+                az + _bias.accel_z + gaussNoise(_noise.accel_sigma),
+                p + _bias.gyro_x + gaussNoise(_noise.gyro_sigma),
+                q + _bias.gyro_y + gaussNoise(_noise.gyro_sigma),
+                r + _bias.gyro_z + gaussNoise(_noise.gyro_sigma));
 
-    sendTruth(time_sec, lat_deg, lon_deg, alt_m, vn, ve, vd,
-              static_cast<float>(phi), static_cast<float>(theta),
-              static_cast<float>(psi), indicated_airspeed_mps);
+        sendTruth(time_sec, lat_deg, lon_deg, alt_m, vn, ve, vd,
+                  static_cast<float>(phi), static_cast<float>(theta),
+                  static_cast<float>(psi), indicated_airspeed_mps);
+    }
 
     // RC input comes from external joystick publisher, not from sim
     // sendRc(time_sec);
 
-    if (_cycle % 2 == 0) {
+    if (_cycle % 8 == 0) {
         if (!_wmm_initialized) {
             double field[6];
             double h_km = alt_m / 1000.0;
@@ -307,7 +310,7 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
                 hz + _bias.mag_z + gaussNoise(_noise.mag_sigma));
     }
 
-    if (_cycle % 4 == 0) {
+    if (_cycle % 40 == 0) {
         double sigma, v_sound, t_amb_r, p_amb_psf;
         ls_atmos(alt_ft, &sigma, &v_sound, &t_amb_r, &p_amb_psf);
         _density_ratio = static_cast<float>(sigma);
@@ -318,7 +321,7 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
         sendBaro(time_sec, baro_alt, press_pa, temp_C);
     }
 
-    if (_cycle % 20 == 0) {
+    if (_cycle % 80 == 0) {
         double lat_noise_deg = gaussNoise(_noise.gps_pos_sigma) / 111320.0;
         double lon_noise_deg = gaussNoise(_noise.gps_pos_sigma) /
             (111320.0 * cos(lat_rad));
@@ -333,7 +336,7 @@ bool T_TX_InterfaceAPM::getInputDataSmol(TSimInputs* inputs)
                 vd + gaussNoise(_noise.gps_vel_sigma));
     }
 
-    if (_cycle % 10 == 0) {
+    if (_cycle % 40 == 0) {
         sendAirspeed(time_sec, indicated_airspeed_mps + gaussNoise(_noise.airspeed_sigma));
     }
 

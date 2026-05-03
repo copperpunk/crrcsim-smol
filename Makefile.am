@@ -281,6 +281,7 @@ crrcsim_SOURCES = src/mod_mode/F3F/handlerF3F.h \
        src/mod_windfield_config.h \
        src/mouse_kbd.h \
        src/SimStateHandler.h \
+       src/sim_command_listener.h \
        src/mod_mode/T_GameHandler.h \
        src/zoom.h \
        src/config.cpp \
@@ -296,6 +297,7 @@ crrcsim_SOURCES = src/mod_mode/F3F/handlerF3F.h \
        src/ImageLoaderTGA.cpp \
        src/mouse_kbd.cpp \
        src/SimStateHandler.cpp \
+       src/sim_command_listener.cpp \
        src/zoom.cpp \
        src/record.h \
        src/record.cpp \

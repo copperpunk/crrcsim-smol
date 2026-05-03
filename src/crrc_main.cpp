@@ -86,6 +86,7 @@ If you'd like to help with CRRCSIM, then send me an email!
 
 #include "mod_main/eventhandler.h"
 #include "mod_main/crrc_checkopts.h"
+#include "sim_command_listener.h"
 
 #include <chrono>
 #include <csignal>
@@ -568,7 +569,15 @@ void read_config_into_globals()
   Global::wind_mode = cfgfile->getInt("wind_mode.fUse", 2);
   Global::nVerbosity = cfgfile->getInt("nVerbosity.level", 0);
   Global::HUDCompass = cfgfile->getInt("HUDCompass.fUse", 0);
-  Global::dt = cfgfile->getDouble("simulation.flightModel.dt", 0.002777);
+  Global::dt = cfgfile->getDouble("simulation.flightModel.dt", 0.0025);
+  Global::realtime_throttle =
+      cfgfile->getInt("simulation.realtime_throttle", 1) != 0;
+  Global::rng_seed =
+      static_cast<uint32_t>(cfgfile->getInt("simulation.rng_seed", 0));
+  Global::duration_sec =
+      static_cast<float>(cfgfile->getDouble("simulation.duration_sec", 0.0));
+  Global::command_port =
+      static_cast<uint16_t>(cfgfile->getInt("simulation.command_port", 0));
   Video::read_config(cfgfile);
 }
 
@@ -732,7 +741,20 @@ static void *fdm_thread(void *)
         }
         Global::unlockFDM();
 
-        std::this_thread::sleep_until(next_cycle);
+        if (Global::duration_sec > 0.0f) {
+            double sim_time_sec = Global::dt * Global::Simulation->SimSteps();
+            if (sim_time_sec >= Global::duration_sec) {
+                printf("Sim duration %.2f sec reached at sim_time=%.3f, exiting.\n",
+                       Global::duration_sec, sim_time_sec);
+                Global::Simulation->setState(STATE_EXIT);
+                fdm_thread_running = false;
+                break;
+            }
+        }
+
+        if (Global::realtime_throttle) {
+            std::this_thread::sleep_until(next_cycle);
+        }
     }
     return NULL;
 }
@@ -744,14 +766,94 @@ int main(int argc,char **argv)
 {
   float field_of_view;
 
-  if (crrc_checkversionopt(argc, argv))
+  // Parse smol SIL automation flags FIRST. crrc_checkversionopt and crrc_checkopts
+  // both use getopt(), which on GNU/Linux permutes argv (moves non-option args to
+  // the end). Filter our flags out into a separate argv[] so:
+  //   1) the GNU-permutation does not scramble their positional pairing, and
+  //   2) crrc_checkopts does not reject them as unknown options.
+  // The override application (Global::* writes) happens later, AFTER
+  // read_config_into_globals() runs so CLI beats config-file values.
+  bool cli_no_realtime  = false;
+  bool cli_headless     = false;
+  bool cli_set_rng_seed = false; uint32_t cli_rng_seed = 0;
+  bool cli_set_duration = false; float    cli_duration = 0.0f;
+  bool cli_set_port     = false; uint16_t cli_port     = 0;
+  const char* cli_launch_mode = nullptr;
+  // Helper: parse a scalar smol-flag value, fail loudly on malformed input
+  // (matches the project's no-fallbacks discipline — silent default-to-zero
+  // would mask CI failures).
+  auto parse_u32 = [&](const char* flag, const char* val) -> uint32_t {
+    char* end = nullptr;
+    errno = 0;
+    unsigned long v = strtoul(val, &end, 10);
+    if (errno != 0 || end == val || *end != '\0') {
+      fprintf(stderr, "ERROR: %s requires an unsigned integer (got '%s').\n", flag, val);
+      exit(EXIT_FAILURE);
+    }
+    return static_cast<uint32_t>(v);
+  };
+  auto parse_f32 = [&](const char* flag, const char* val) -> float {
+    char* end = nullptr;
+    errno = 0;
+    double v = strtod(val, &end);
+    if (errno != 0 || end == val || *end != '\0') {
+      fprintf(stderr, "ERROR: %s requires a number (got '%s').\n", flag, val);
+      exit(EXIT_FAILURE);
+    }
+    return static_cast<float>(v);
+  };
+  auto parse_port = [&](const char* flag, const char* val) -> uint16_t {
+    char* end = nullptr;
+    errno = 0;
+    unsigned long v = strtoul(val, &end, 10);
+    if (errno != 0 || end == val || *end != '\0' || v == 0 || v > 65535) {
+      fprintf(stderr, "ERROR: %s requires a port in [1, 65535] (got '%s').\n", flag, val);
+      exit(EXIT_FAILURE);
+    }
+    return static_cast<uint16_t>(v);
+  };
+
+  std::vector<char*> filtered_argv;
+  filtered_argv.push_back(argv[0]);
+  for (int ai = 1; ai < argc; ai++) {
+    if (!strcmp(argv[ai], "--no-realtime")) {
+      cli_no_realtime = true;
+    } else if (!strcmp(argv[ai], "--headless")) {
+      cli_headless = true;
+    } else if (!strcmp(argv[ai], "--rng-seed") && ai + 1 < argc) {
+      cli_rng_seed = parse_u32("--rng-seed", argv[++ai]);
+      cli_set_rng_seed = true;
+    } else if (!strcmp(argv[ai], "--duration") && ai + 1 < argc) {
+      cli_duration = parse_f32("--duration", argv[++ai]);
+      cli_set_duration = true;
+    } else if (!strcmp(argv[ai], "--command-port") && ai + 1 < argc) {
+      cli_port = parse_port("--command-port", argv[++ai]);
+      cli_set_port = true;
+    } else if (!strcmp(argv[ai], "--launch-mode") && ai + 1 < argc) {
+      cli_launch_mode = argv[++ai];
+    } else {
+      filtered_argv.push_back(argv[ai]);
+    }
+  }
+  int    filtered_argc     = static_cast<int>(filtered_argv.size());
+  filtered_argv.push_back(nullptr);  // POSIX argv[argc] == NULL
+  char** filtered_argv_ptr = filtered_argv.data();
+
+  if (crrc_checkversionopt(filtered_argc, filtered_argv_ptr))
   {
     crrc_exit(CRRC_EXIT_SUCCESS);
   }
 
+  // hand_launch_mode is true if either the env var or the CLI flag asks for
+  // it. The throw-velocity env var (CRRCSIM_HAND_LAUNCH_VEL_MPS) is still
+  // required and validated below regardless of which path enabled the mode.
+  // (Earlier revision called setenv() to chain into the env-var path; that
+  // is POSIX-only and does not compile on MSVC, so we OR the conditions
+  // directly instead.)
   const char* launch_mode_env = getenv("CRRCSIM_LAUNCH_MODE");
-  Global::hand_launch_mode = (launch_mode_env != nullptr) &&
-                             (strcmp(launch_mode_env, "hand") == 0);
+  Global::hand_launch_mode =
+      (launch_mode_env != nullptr && !strcmp(launch_mode_env, "hand")) ||
+      (cli_launch_mode != nullptr && !strcmp(cli_launch_mode, "hand"));
   if (Global::hand_launch_mode)
   {
     const char* throw_vel_env = getenv("CRRCSIM_HAND_LAUNCH_VEL_MPS");
@@ -846,12 +948,13 @@ int main(int argc,char **argv)
       try
       {
         // ***** Read configuration, parse commandline... ***********************
-        for (i = 1; i < argc - 1; i++)
+        // Read -g from filtered_argv (pre-getopt-permutation) so its index is stable.
+        for (i = 1; i < filtered_argc - 1; i++)
         {
-          if (!strcmp(argv[i], "-g"))
-            T_Config::putConfigFilePath(argv[i+1]);
+          if (!strcmp(filtered_argv_ptr[i], "-g"))
+            T_Config::putConfigFilePath(filtered_argv_ptr[i+1]);
         }
-        
+
         cfg = new T_Config(cfgfile); // This will also set up cfgfile
         cfg->read(cfgfile);
         
@@ -867,13 +970,17 @@ int main(int argc,char **argv)
         fdmenv = new CRRC_FDM_Env(cfgfile);  
         
         // command line options override settings read from the config file
-        nRetCodeCmdline = crrc_checkopts(argc, argv, cfgfile, cfg);
+        nRetCodeCmdline = crrc_checkopts(filtered_argc, filtered_argv_ptr, cfgfile, cfg);
 
         if (nRetCodeCmdline)
           crrc_exit(CRRC_EXIT_FAILURE);
 
         // must be after crrc_checkopts because crrc_checkopts can change
         //   video.enabled and sound.enabled based on command line options
+        // --headless takes effect here, BEFORE SDL_INIT_VIDEO is requested,
+        // so test runs on display-less hosts (CI, headless servers) don't
+        // attempt to open a window.
+        if (cli_headless) cfgfile->setAttributeOverwrite("video.enabled", 0);
         if (cfgfile->getInt("video.enabled", 1))
           SDLFlags |= SDL_INIT_VIDEO;
         SDL_Init(SDLFlags);
@@ -886,6 +993,27 @@ int main(int argc,char **argv)
         Global::robots = new Robots();
         
         read_config_into_globals();
+
+        // CLI overrides config-file values (applied after read_config_into_globals).
+        // --headless and --launch-mode were applied earlier (before SDL_Init
+        // and the env-var validation respectively); these are the runtime-
+        // consumed flags whose Global::* writes can wait until config is read.
+        if (cli_no_realtime)  Global::realtime_throttle = false;
+        if (cli_set_rng_seed) Global::rng_seed = cli_rng_seed;
+        if (cli_set_duration) Global::duration_sec = cli_duration;
+        if (cli_set_port)     Global::command_port = cli_port;
+        if (Global::realtime_throttle == false && Global::duration_sec <= 0.0f) {
+          fprintf(stderr,
+                  "WARNING: --no-realtime without --duration: CRRCSim will run "
+                  "unbounded as fast as possible until SIGINT.\n");
+        }
+        if (Global::rng_seed == 0) {
+          Global::rng_seed = static_cast<uint32_t>(time(nullptr));
+        }
+        printf("smol SIL config: realtime_throttle=%d rng_seed=%u "
+               "duration_sec=%.1f command_port=%u\n",
+               Global::realtime_throttle, Global::rng_seed,
+               Global::duration_sec, Global::command_port);
 
         std::string msg = reconfigureInputMethod();
         if (msg.length())
@@ -956,6 +1084,11 @@ int main(int argc,char **argv)
             }
           }
         }
+
+        // Start the command-port listener after FDM + airplane state are
+        // fully initialized so an early connection can't fire
+        // throw_hand_launched_aircraft() against a half-initialized FDM.
+        StartSimCommandListener(Global::command_port);
       }
       catch (XMLException e)
       {
@@ -1017,7 +1150,9 @@ int main(int argc,char **argv)
       // Main loop just sleeps until exit (SIGINT).
       if (!Global::gui)
       {
-        SDL_Delay(100);
+        // Headless: FDM thread carries the work. Yield this thread either way
+        // so the idle main loop doesn't burn 100% of a core under FTRT.
+        SDL_Delay(Global::realtime_throttle ? 100 : 1);
         continue;
       }
 
