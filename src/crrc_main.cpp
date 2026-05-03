@@ -752,7 +752,45 @@ int main(int argc,char **argv)
 {
   float field_of_view;
 
-  if (crrc_checkversionopt(argc, argv))
+  // Parse smol SIL automation flags FIRST. crrc_checkversionopt and crrc_checkopts
+  // both use getopt(), which on GNU/Linux permutes argv (moves non-option args to
+  // the end). Filter our flags out into a separate argv[] so:
+  //   1) the GNU-permutation does not scramble their positional pairing, and
+  //   2) crrc_checkopts does not reject them as unknown options.
+  // The override application (Global::* writes) happens later, AFTER
+  // read_config_into_globals() runs so CLI beats config-file values.
+  bool cli_no_realtime  = false;
+  bool cli_headless     = false;
+  bool cli_set_rng_seed = false; uint32_t cli_rng_seed = 0;
+  bool cli_set_duration = false; float    cli_duration = 0.0f;
+  bool cli_set_port     = false; uint16_t cli_port     = 0;
+  const char* cli_launch_mode = nullptr;
+  std::vector<char*> filtered_argv;
+  filtered_argv.push_back(argv[0]);
+  for (int ai = 1; ai < argc; ai++) {
+    if (!strcmp(argv[ai], "--no-realtime")) {
+      cli_no_realtime = true;
+    } else if (!strcmp(argv[ai], "--headless")) {
+      cli_headless = true;
+    } else if (!strcmp(argv[ai], "--rng-seed") && ai + 1 < argc) {
+      cli_rng_seed = static_cast<uint32_t>(strtoul(argv[++ai], nullptr, 10));
+      cli_set_rng_seed = true;
+    } else if (!strcmp(argv[ai], "--duration") && ai + 1 < argc) {
+      cli_duration = static_cast<float>(strtod(argv[++ai], nullptr));
+      cli_set_duration = true;
+    } else if (!strcmp(argv[ai], "--command-port") && ai + 1 < argc) {
+      cli_port = static_cast<uint16_t>(strtoul(argv[++ai], nullptr, 10));
+      cli_set_port = true;
+    } else if (!strcmp(argv[ai], "--launch-mode") && ai + 1 < argc) {
+      cli_launch_mode = argv[++ai];
+    } else {
+      filtered_argv.push_back(argv[ai]);
+    }
+  }
+  int    filtered_argc     = static_cast<int>(filtered_argv.size());
+  char** filtered_argv_ptr = filtered_argv.data();
+
+  if (crrc_checkversionopt(filtered_argc, filtered_argv_ptr))
   {
     crrc_exit(CRRC_EXIT_SUCCESS);
   }
@@ -854,12 +892,15 @@ int main(int argc,char **argv)
       try
       {
         // ***** Read configuration, parse commandline... ***********************
-        for (i = 1; i < argc - 1; i++)
+        // -g is the only flag that needs handling before T_Config construction.
+        // Use the smol-filtered argv so getopt-permuted argv from earlier passes
+        // does not affect the search. (smol flags excluded — they don't carry -g.)
+        for (i = 1; i < filtered_argc - 1; i++)
         {
-          if (!strcmp(argv[i], "-g"))
-            T_Config::putConfigFilePath(argv[i+1]);
+          if (!strcmp(filtered_argv_ptr[i], "-g"))
+            T_Config::putConfigFilePath(filtered_argv_ptr[i+1]);
         }
-        
+
         cfg = new T_Config(cfgfile); // This will also set up cfgfile
         cfg->read(cfgfile);
         
@@ -875,7 +916,9 @@ int main(int argc,char **argv)
         fdmenv = new CRRC_FDM_Env(cfgfile);  
         
         // command line options override settings read from the config file
-        nRetCodeCmdline = crrc_checkopts(argc, argv, cfgfile, cfg);
+        // (smol SIL flags filtered out — crrc_checkopts uses getopt and would
+        //  reject them as unknown options).
+        nRetCodeCmdline = crrc_checkopts(filtered_argc, filtered_argv_ptr, cfgfile, cfg);
 
         if (nRetCodeCmdline)
           crrc_exit(CRRC_EXIT_FAILURE);
@@ -894,6 +937,28 @@ int main(int argc,char **argv)
         Global::robots = new Robots();
         
         read_config_into_globals();
+
+        // CLI overrides config-file values (applied after read_config_into_globals).
+        if (cli_no_realtime)  Global::realtime_throttle = false;
+        if (cli_set_rng_seed) Global::rng_seed = cli_rng_seed;
+        if (cli_set_duration) Global::duration_sec = cli_duration;
+        if (cli_set_port)     Global::command_port = cli_port;
+        if (cli_headless)     cfgfile->setAttributeOverwrite("video.enabled", 0);
+        if (cli_launch_mode && !strcmp(cli_launch_mode, "hand")) {
+          Global::hand_launch_mode = true;
+        }
+        if (Global::realtime_throttle == false && Global::duration_sec <= 0.0f) {
+          fprintf(stderr,
+                  "WARNING: --no-realtime without --duration: CRRCSim will run "
+                  "unbounded as fast as possible until SIGINT.\n");
+        }
+        if (Global::rng_seed == 0) {
+          Global::rng_seed = static_cast<uint32_t>(time(nullptr));
+        }
+        printf("smol SIL config: realtime_throttle=%d rng_seed=%u "
+               "duration_sec=%.1f command_port=%u\n",
+               Global::realtime_throttle, Global::rng_seed,
+               Global::duration_sec, Global::command_port);
 
         std::string msg = reconfigureInputMethod();
         if (msg.length())
