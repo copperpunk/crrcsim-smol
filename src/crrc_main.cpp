@@ -742,8 +742,7 @@ static void *fdm_thread(void *)
         Global::unlockFDM();
 
         if (Global::duration_sec > 0.0f) {
-            float sim_time_sec = static_cast<float>(
-                Global::dt * Global::Simulation->SimSteps());
+            double sim_time_sec = Global::dt * Global::Simulation->SimSteps();
             if (sim_time_sec >= Global::duration_sec) {
                 printf("Sim duration %.2f sec reached at sim_time=%.3f, exiting.\n",
                        Global::duration_sec, sim_time_sec);
@@ -837,6 +836,7 @@ int main(int argc,char **argv)
     }
   }
   int    filtered_argc     = static_cast<int>(filtered_argv.size());
+  filtered_argv.push_back(nullptr);  // POSIX argv[argc] == NULL
   char** filtered_argv_ptr = filtered_argv.data();
 
   if (crrc_checkversionopt(filtered_argc, filtered_argv_ptr))
