@@ -568,7 +568,7 @@ void read_config_into_globals()
   Global::wind_mode = cfgfile->getInt("wind_mode.fUse", 2);
   Global::nVerbosity = cfgfile->getInt("nVerbosity.level", 0);
   Global::HUDCompass = cfgfile->getInt("HUDCompass.fUse", 0);
-  Global::dt = cfgfile->getDouble("simulation.flightModel.dt", 0.002777);
+  Global::dt = cfgfile->getDouble("simulation.flightModel.dt", 0.0025);
   Global::realtime_throttle =
       cfgfile->getInt("simulation.realtime_throttle", 1) != 0;
   Global::rng_seed =
