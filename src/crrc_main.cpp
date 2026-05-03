@@ -740,7 +740,9 @@ static void *fdm_thread(void *)
         }
         Global::unlockFDM();
 
-        std::this_thread::sleep_until(next_cycle);
+        if (Global::realtime_throttle) {
+            std::this_thread::sleep_until(next_cycle);
+        }
     }
     return NULL;
 }
@@ -1090,7 +1092,9 @@ int main(int argc,char **argv)
       // Main loop just sleeps until exit (SIGINT).
       if (!Global::gui)
       {
-        SDL_Delay(100);
+        if (Global::realtime_throttle) {
+          SDL_Delay(100);
+        }
         continue;
       }
 
