@@ -569,6 +569,14 @@ void read_config_into_globals()
   Global::nVerbosity = cfgfile->getInt("nVerbosity.level", 0);
   Global::HUDCompass = cfgfile->getInt("HUDCompass.fUse", 0);
   Global::dt = cfgfile->getDouble("simulation.flightModel.dt", 0.002777);
+  Global::realtime_throttle =
+      cfgfile->getInt("simulation.realtime_throttle", 1) != 0;
+  Global::rng_seed =
+      static_cast<uint32_t>(cfgfile->getInt("simulation.rng_seed", 0));
+  Global::duration_sec =
+      static_cast<float>(cfgfile->getDouble("simulation.duration_sec", 0.0));
+  Global::command_port =
+      static_cast<uint16_t>(cfgfile->getInt("simulation.command_port", 0));
   Video::read_config(cfgfile);
 }
 

@@ -31,6 +31,7 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
+#include <cstdint>
 #include <string>
 #include <pthread.h>
 #include "mod_fdm/fdm_inputs.h"
@@ -113,6 +114,11 @@ class Global
     static constexpr float  hand_launch_platform_height_ft = 6.0f;  ///< virtual platform AGL [ft]
     static constexpr float  hand_launch_platform_radius_ft = 4.0f;  ///< virtual platform extent [ft]
     static double           hand_launch_throw_velocity_mps;         ///< throw velocity [m/s]
+
+    static bool             realtime_throttle;  ///< true => sleep_until pacing on (default), false => FTRT
+    static uint32_t         rng_seed;           ///< seed for the noise RNG; 0 = auto from time(nullptr)
+    static float            duration_sec;       ///< sim-time exit limit; 0 = run until SIGINT
+    static uint16_t         command_port;       ///< TCP port for the hand-launch command surface; 0 = disabled
 
     static void lockFDM(void) { pthread_mutex_lock(&fdm_lock); }
     static void unlockFDM(void) { pthread_mutex_unlock(&fdm_lock); }
