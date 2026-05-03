@@ -43,7 +43,7 @@ sys.exit(0 if ok else 1)
 "
 
 # Sensor-stream tolerance verification depends on a UDP capture/replay rig
-# that's part of sub-project 3-4, not this PR. T1 here verifies wall-time
-# gating + stdout consistency only.
-diff /tmp/t1_run1.log /tmp/t1_run2.log | head -40 || true
+# that's part of sub-project 3-4, not this PR. T1 here verifies the wall-time
+# gate only. (A bare log diff is not informative — the startup line includes
+# a wall-clock timestamp that always differs across runs.)
 echo "T1 PASS (walltime gate); sensor-stream tolerance verification deferred to sub-project 4."

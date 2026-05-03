@@ -82,7 +82,12 @@ void StartSimCommandListener(uint16_t port) {
         exit(1);
     }
     s_running = true;
-    pthread_create(&s_thread, nullptr, listener_loop, nullptr);
+    int rc = pthread_create(&s_thread, nullptr, listener_loop, nullptr);
+    if (rc != 0) {
+        fprintf(stderr, "CRRCSim cannot spawn command-port thread: %s\n",
+                strerror(rc));
+        exit(1);
+    }
     printf("sim_command_listener: listening on 127.0.0.1:%u\n", port);
 }
 
