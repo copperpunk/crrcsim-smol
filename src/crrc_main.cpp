@@ -740,6 +740,18 @@ static void *fdm_thread(void *)
         }
         Global::unlockFDM();
 
+        if (Global::duration_sec > 0.0f) {
+            float sim_time_sec = static_cast<float>(
+                Global::dt * Global::Simulation->SimSteps());
+            if (sim_time_sec >= Global::duration_sec) {
+                printf("Sim duration %.2f sec reached at sim_time=%.3f, exiting.\n",
+                       Global::duration_sec, sim_time_sec);
+                Global::Simulation->setState(STATE_EXIT);
+                fdm_thread_running = false;
+                break;
+            }
+        }
+
         if (Global::realtime_throttle) {
             std::this_thread::sleep_until(next_cycle);
         }
