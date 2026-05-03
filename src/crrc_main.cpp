@@ -86,6 +86,7 @@ If you'd like to help with CRRCSIM, then send me an email!
 
 #include "mod_main/eventhandler.h"
 #include "mod_main/crrc_checkopts.h"
+#include "sim_command_listener.h"
 
 #include <chrono>
 #include <csignal>
@@ -973,6 +974,8 @@ int main(int argc,char **argv)
                "duration_sec=%.1f command_port=%u\n",
                Global::realtime_throttle, Global::rng_seed,
                Global::duration_sec, Global::command_port);
+
+        StartSimCommandListener(Global::command_port);
 
         std::string msg = reconfigureInputMethod();
         if (msg.length())

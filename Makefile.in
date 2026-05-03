@@ -241,6 +241,7 @@ am_crrcsim_OBJECTS = src/mod_mode/F3F/crrcsim-handlerF3F.$(OBJEXT) \
 	src/crrcsim-ImageLoaderTGA.$(OBJEXT) \
 	src/crrcsim-mouse_kbd.$(OBJEXT) \
 	src/crrcsim-SimStateHandler.$(OBJEXT) \
+	src/crrcsim-sim_command_listener.$(OBJEXT) \
 	src/crrcsim-zoom.$(OBJEXT) src/crrcsim-record.$(OBJEXT) \
 	src/crrcsim-robots.$(OBJEXT) \
 	src/mod_main/crrcsim-eventhandler.$(OBJEXT) \
@@ -282,7 +283,9 @@ am__depfiles_remade = src/$(DEPDIR)/crrcsim-CTime.Po \
 	src/$(DEPDIR)/crrcsim-global.Po \
 	src/$(DEPDIR)/crrcsim-mouse_kbd.Po \
 	src/$(DEPDIR)/crrcsim-record.Po \
-	src/$(DEPDIR)/crrcsim-robots.Po src/$(DEPDIR)/crrcsim-zoom.Po \
+	src/$(DEPDIR)/crrcsim-robots.Po \
+	src/$(DEPDIR)/crrcsim-sim_command_listener.Po \
+	src/$(DEPDIR)/crrcsim-zoom.Po \
 	src/GUI/$(DEPDIR)/crrcsim-crrc_audio.Po \
 	src/GUI/$(DEPDIR)/crrcsim-crrc_calibmap.Po \
 	src/GUI/$(DEPDIR)/crrcsim-crrc_ctrldev.Po \
@@ -925,6 +928,7 @@ crrcsim_SOURCES = src/mod_mode/F3F/handlerF3F.h \
        src/mod_windfield_config.h \
        src/mouse_kbd.h \
        src/SimStateHandler.h \
+       src/sim_command_listener.h \
        src/mod_mode/T_GameHandler.h \
        src/zoom.h \
        src/config.cpp \
@@ -940,6 +944,7 @@ crrcsim_SOURCES = src/mod_mode/F3F/handlerF3F.h \
        src/ImageLoaderTGA.cpp \
        src/mouse_kbd.cpp \
        src/SimStateHandler.cpp \
+       src/sim_command_listener.cpp \
        src/zoom.cpp \
        src/record.h \
        src/record.cpp \
@@ -1722,6 +1727,8 @@ src/crrcsim-mouse_kbd.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 src/crrcsim-SimStateHandler.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
+src/crrcsim-sim_command_listener.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
 src/crrcsim-zoom.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 src/crrcsim-record.$(OBJEXT): src/$(am__dirstamp) \
@@ -1822,6 +1829,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/crrcsim-mouse_kbd.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/crrcsim-record.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/crrcsim-robots.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/crrcsim-sim_command_listener.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/crrcsim-zoom.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/GUI/$(DEPDIR)/crrcsim-crrc_audio.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/GUI/$(DEPDIR)/crrcsim-crrc_calibmap.Po@am__quote@ # am--include-marker
@@ -3847,6 +3855,20 @@ src/crrcsim-SimStateHandler.obj: src/SimStateHandler.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(crrcsim_CXXFLAGS) $(CXXFLAGS) -c -o src/crrcsim-SimStateHandler.obj `if test -f 'src/SimStateHandler.cpp'; then $(CYGPATH_W) 'src/SimStateHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/src/SimStateHandler.cpp'; fi`
 
+src/crrcsim-sim_command_listener.o: src/sim_command_listener.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(crrcsim_CXXFLAGS) $(CXXFLAGS) -MT src/crrcsim-sim_command_listener.o -MD -MP -MF src/$(DEPDIR)/crrcsim-sim_command_listener.Tpo -c -o src/crrcsim-sim_command_listener.o `test -f 'src/sim_command_listener.cpp' || echo '$(srcdir)/'`src/sim_command_listener.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/$(DEPDIR)/crrcsim-sim_command_listener.Tpo src/$(DEPDIR)/crrcsim-sim_command_listener.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/sim_command_listener.cpp' object='src/crrcsim-sim_command_listener.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(crrcsim_CXXFLAGS) $(CXXFLAGS) -c -o src/crrcsim-sim_command_listener.o `test -f 'src/sim_command_listener.cpp' || echo '$(srcdir)/'`src/sim_command_listener.cpp
+
+src/crrcsim-sim_command_listener.obj: src/sim_command_listener.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(crrcsim_CXXFLAGS) $(CXXFLAGS) -MT src/crrcsim-sim_command_listener.obj -MD -MP -MF src/$(DEPDIR)/crrcsim-sim_command_listener.Tpo -c -o src/crrcsim-sim_command_listener.obj `if test -f 'src/sim_command_listener.cpp'; then $(CYGPATH_W) 'src/sim_command_listener.cpp'; else $(CYGPATH_W) '$(srcdir)/src/sim_command_listener.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/$(DEPDIR)/crrcsim-sim_command_listener.Tpo src/$(DEPDIR)/crrcsim-sim_command_listener.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/sim_command_listener.cpp' object='src/crrcsim-sim_command_listener.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(crrcsim_CXXFLAGS) $(CXXFLAGS) -c -o src/crrcsim-sim_command_listener.obj `if test -f 'src/sim_command_listener.cpp'; then $(CYGPATH_W) 'src/sim_command_listener.cpp'; else $(CYGPATH_W) '$(srcdir)/src/sim_command_listener.cpp'; fi`
+
 src/crrcsim-zoom.o: src/zoom.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(crrcsim_CXXFLAGS) $(CXXFLAGS) -MT src/crrcsim-zoom.o -MD -MP -MF src/$(DEPDIR)/crrcsim-zoom.Tpo -c -o src/crrcsim-zoom.o `test -f 'src/zoom.cpp' || echo '$(srcdir)/'`src/zoom.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/$(DEPDIR)/crrcsim-zoom.Tpo src/$(DEPDIR)/crrcsim-zoom.Po
@@ -4417,6 +4439,7 @@ distclean: distclean-recursive
 	-rm -f src/$(DEPDIR)/crrcsim-mouse_kbd.Po
 	-rm -f src/$(DEPDIR)/crrcsim-record.Po
 	-rm -f src/$(DEPDIR)/crrcsim-robots.Po
+	-rm -f src/$(DEPDIR)/crrcsim-sim_command_listener.Po
 	-rm -f src/$(DEPDIR)/crrcsim-zoom.Po
 	-rm -f src/GUI/$(DEPDIR)/crrcsim-crrc_audio.Po
 	-rm -f src/GUI/$(DEPDIR)/crrcsim-crrc_calibmap.Po
@@ -4606,6 +4629,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f src/$(DEPDIR)/crrcsim-mouse_kbd.Po
 	-rm -f src/$(DEPDIR)/crrcsim-record.Po
 	-rm -f src/$(DEPDIR)/crrcsim-robots.Po
+	-rm -f src/$(DEPDIR)/crrcsim-sim_command_listener.Po
 	-rm -f src/$(DEPDIR)/crrcsim-zoom.Po
 	-rm -f src/GUI/$(DEPDIR)/crrcsim-crrc_audio.Po
 	-rm -f src/GUI/$(DEPDIR)/crrcsim-crrc_calibmap.Po
