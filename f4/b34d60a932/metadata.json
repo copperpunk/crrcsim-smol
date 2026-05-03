@@ -1,0 +1,27 @@
+{
+  "cli_version": "dev",
+  "checkpoint_id": "f4b34d60a932",
+  "strategy": "manual-commit",
+  "branch": "feat/headless-ftrt",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "src/mod_inputdev/inputdev_apm/inputdev_apm.cpp",
+    "src/mod_inputdev/inputdev_apm/inputdev_apm.h"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f4/b34d60a932/0/metadata.json",
+      "transcript": "/f4/b34d60a932/0/full.jsonl",
+      "context": "/f4/b34d60a932/0/context.md",
+      "content_hash": "/f4/b34d60a932/0/content_hash.txt",
+      "prompt": "/f4/b34d60a932/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 35041,
+    "cache_creation_tokens": 23001726,
+    "cache_read_tokens": 1578837870,
+    "output_tokens": 3240975,
+    "api_call_count": 7605
+  }
+}
