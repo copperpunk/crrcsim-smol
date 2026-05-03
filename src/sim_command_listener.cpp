@@ -22,14 +22,20 @@ static void* listener_loop(void* /*arg*/) {
     while (s_running) {
         int client = accept(s_listen_fd, nullptr, nullptr);
         if (client < 0) {
+            if (!s_running) {
+                return nullptr;
+            }
             if (errno == EINTR || errno == EAGAIN || errno == ECONNABORTED) {
                 continue;
             }
-            if (s_running) {
-                fprintf(stderr, "sim_command_listener: accept failed: %s\n",
-                        strerror(errno));
-            }
-            return nullptr;
+            // Don't kill the listener on transient resource errors (e.g.
+            // EMFILE if the FC is briefly out of FDs). Log, brief backoff,
+            // try again. The thread only ends when StopSimCommandListener
+            // closes the listen fd and clears s_running.
+            fprintf(stderr, "sim_command_listener: accept failed: %s\n",
+                    strerror(errno));
+            usleep(100000);
+            continue;
         }
         char byte;
         ssize_t n = recv(client, &byte, 1, 0);

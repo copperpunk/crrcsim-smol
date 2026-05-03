@@ -844,21 +844,16 @@ int main(int argc,char **argv)
     crrc_exit(CRRC_EXIT_SUCCESS);
   }
 
-  // Apply CLI overrides that affect early init (before the env-var check and
-  // SDL_Init). --launch-mode hand routes through the existing env-var
-  // validation path so the throw-velocity env var is still required and
-  // validated. --headless takes effect by setting CRRCSIM_LAUNCH_MODE-style
-  // gating below; the SDL_INIT_VIDEO bit is suppressed downstream. The other
-  // CLI overrides (rng-seed, duration, command-port, no-realtime) are applied
-  // later, after read_config_into_globals(), so they cleanly beat config-file
-  // values consumed at runtime.
-  if (cli_launch_mode && !strcmp(cli_launch_mode, "hand")) {
-    setenv("CRRCSIM_LAUNCH_MODE", "hand", /*overwrite=*/0);
-  }
-
+  // hand_launch_mode is true if either the env var or the CLI flag asks for
+  // it. The throw-velocity env var (CRRCSIM_HAND_LAUNCH_VEL_MPS) is still
+  // required and validated below regardless of which path enabled the mode.
+  // (Earlier revision called setenv() to chain into the env-var path; that
+  // is POSIX-only and does not compile on MSVC, so we OR the conditions
+  // directly instead.)
   const char* launch_mode_env = getenv("CRRCSIM_LAUNCH_MODE");
-  Global::hand_launch_mode = (launch_mode_env != nullptr) &&
-                             (strcmp(launch_mode_env, "hand") == 0);
+  Global::hand_launch_mode =
+      (launch_mode_env != nullptr && !strcmp(launch_mode_env, "hand")) ||
+      (cli_launch_mode != nullptr && !strcmp(cli_launch_mode, "hand"));
   if (Global::hand_launch_mode)
   {
     const char* throw_vel_env = getenv("CRRCSIM_HAND_LAUNCH_VEL_MPS");
