@@ -1,0 +1,26 @@
+{
+  "cli_version": "dev",
+  "checkpoint_id": "2bdda4d39bbd",
+  "strategy": "manual-commit",
+  "branch": "feat/headless-ftrt",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "tests/headless_ftrt/run_t3.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/2b/dda4d39bbd/0/metadata.json",
+      "transcript": "/2b/dda4d39bbd/0/full.jsonl",
+      "context": "/2b/dda4d39bbd/0/context.md",
+      "content_hash": "/2b/dda4d39bbd/0/content_hash.txt",
+      "prompt": "/2b/dda4d39bbd/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 35041,
+    "cache_creation_tokens": 23001726,
+    "cache_read_tokens": 1578837870,
+    "output_tokens": 3240975,
+    "api_call_count": 7605
+  }
+}
