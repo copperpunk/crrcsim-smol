@@ -1,0 +1,27 @@
+{
+  "cli_version": "dev",
+  "checkpoint_id": "52497652a72e",
+  "strategy": "manual-commit",
+  "branch": "feat/headless-ftrt",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "configs/smol_test_handlaunch.xml",
+    "tests/headless_ftrt/run_t2.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/52/497652a72e/0/metadata.json",
+      "transcript": "/52/497652a72e/0/full.jsonl",
+      "context": "/52/497652a72e/0/context.md",
+      "content_hash": "/52/497652a72e/0/content_hash.txt",
+      "prompt": "/52/497652a72e/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 35041,
+    "cache_creation_tokens": 23001726,
+    "cache_read_tokens": 1578837870,
+    "output_tokens": 3240975,
+    "api_call_count": 7605
+  }
+}
