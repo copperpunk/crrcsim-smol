@@ -907,9 +907,7 @@ int main(int argc,char **argv)
       try
       {
         // ***** Read configuration, parse commandline... ***********************
-        // -g is the only flag that needs handling before T_Config construction.
-        // Use the smol-filtered argv so getopt-permuted argv from earlier passes
-        // does not affect the search. (smol flags excluded — they don't carry -g.)
+        // Read -g from filtered_argv (pre-getopt-permutation) so its index is stable.
         for (i = 1; i < filtered_argc - 1; i++)
         {
           if (!strcmp(filtered_argv_ptr[i], "-g"))
@@ -931,8 +929,6 @@ int main(int argc,char **argv)
         fdmenv = new CRRC_FDM_Env(cfgfile);  
         
         // command line options override settings read from the config file
-        // (smol SIL flags filtered out — crrc_checkopts uses getopt and would
-        //  reject them as unknown options).
         nRetCodeCmdline = crrc_checkopts(filtered_argc, filtered_argv_ptr, cfgfile, cfg);
 
         if (nRetCodeCmdline)
