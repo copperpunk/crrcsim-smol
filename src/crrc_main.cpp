@@ -810,6 +810,18 @@ int main(int argc,char **argv)
     crrc_exit(CRRC_EXIT_SUCCESS);
   }
 
+  // Apply CLI overrides that affect early init (before the env-var check and
+  // SDL_Init). --launch-mode hand routes through the existing env-var
+  // validation path so the throw-velocity env var is still required and
+  // validated. --headless takes effect by setting CRRCSIM_LAUNCH_MODE-style
+  // gating below; the SDL_INIT_VIDEO bit is suppressed downstream. The other
+  // CLI overrides (rng-seed, duration, command-port, no-realtime) are applied
+  // later, after read_config_into_globals(), so they cleanly beat config-file
+  // values consumed at runtime.
+  if (cli_launch_mode && !strcmp(cli_launch_mode, "hand")) {
+    setenv("CRRCSIM_LAUNCH_MODE", "hand", /*overwrite=*/0);
+  }
+
   const char* launch_mode_env = getenv("CRRCSIM_LAUNCH_MODE");
   Global::hand_launch_mode = (launch_mode_env != nullptr) &&
                              (strcmp(launch_mode_env, "hand") == 0);
@@ -936,6 +948,10 @@ int main(int argc,char **argv)
 
         // must be after crrc_checkopts because crrc_checkopts can change
         //   video.enabled and sound.enabled based on command line options
+        // --headless takes effect here, BEFORE SDL_INIT_VIDEO is requested,
+        // so test runs on display-less hosts (CI, headless servers) don't
+        // attempt to open a window.
+        if (cli_headless) cfgfile->setAttributeOverwrite("video.enabled", 0);
         if (cfgfile->getInt("video.enabled", 1))
           SDLFlags |= SDL_INIT_VIDEO;
         SDL_Init(SDLFlags);
@@ -950,14 +966,13 @@ int main(int argc,char **argv)
         read_config_into_globals();
 
         // CLI overrides config-file values (applied after read_config_into_globals).
+        // --headless and --launch-mode were applied earlier (before SDL_Init
+        // and the env-var validation respectively); these are the runtime-
+        // consumed flags whose Global::* writes can wait until config is read.
         if (cli_no_realtime)  Global::realtime_throttle = false;
         if (cli_set_rng_seed) Global::rng_seed = cli_rng_seed;
         if (cli_set_duration) Global::duration_sec = cli_duration;
         if (cli_set_port)     Global::command_port = cli_port;
-        if (cli_headless)     cfgfile->setAttributeOverwrite("video.enabled", 0);
-        if (cli_launch_mode && !strcmp(cli_launch_mode, "hand")) {
-          Global::hand_launch_mode = true;
-        }
         if (Global::realtime_throttle == false && Global::duration_sec <= 0.0f) {
           fprintf(stderr,
                   "WARNING: --no-realtime without --duration: CRRCSim will run "
@@ -1103,9 +1118,9 @@ int main(int argc,char **argv)
       // Main loop just sleeps until exit (SIGINT).
       if (!Global::gui)
       {
-        if (Global::realtime_throttle) {
-          SDL_Delay(100);
-        }
+        // Headless: FDM thread carries the work. Yield this thread either way
+        // so the idle main loop doesn't burn 100% of a core under FTRT.
+        SDL_Delay(Global::realtime_throttle ? 100 : 1);
         continue;
       }
 

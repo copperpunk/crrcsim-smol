@@ -22,6 +22,9 @@ static void* listener_loop(void* /*arg*/) {
     while (s_running) {
         int client = accept(s_listen_fd, nullptr, nullptr);
         if (client < 0) {
+            if (errno == EINTR || errno == EAGAIN || errno == ECONNABORTED) {
+                continue;
+            }
             if (s_running) {
                 fprintf(stderr, "sim_command_listener: accept failed: %s\n",
                         strerror(errno));
@@ -36,7 +39,12 @@ static void* listener_loop(void* /*arg*/) {
         }
         if (Global::hand_launch_mode) {
             printf("sim_command_listener: throw fired by command-port byte\n");
+            // throw_hand_launched_aircraft() mutates FDM state (initAirplaneState).
+            // fdm_thread holds Global::lockFDM around its update() — take the
+            // same lock here so the listener thread does not race the FDM tick.
+            Global::lockFDM();
             throw_hand_launched_aircraft();
+            Global::unlockFDM();
         } else {
             fprintf(stderr,
                     "WARNING: sim_command_listener received byte but "
