@@ -1,0 +1,33 @@
+{
+  "cli_version": "dev",
+  "checkpoint_id": "2486ef54f62b",
+  "session_id": "fdec0332-7836-4bde-8399-bbb78678f872",
+  "strategy": "manual-commit",
+  "created_at": "2026-05-03T01:19:08.673442926Z",
+  "branch": "feat/headless-ftrt",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "src/crrc_main.cpp"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "c9dad0ac9329",
+  "checkpoint_transcript_start": 52835,
+  "transcript_lines_at_start": 52835,
+  "token_usage": {
+    "input_tokens": 2,
+    "cache_creation_tokens": 4481,
+    "cache_read_tokens": 462822,
+    "output_tokens": 2509,
+    "api_call_count": 2
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-05-03T01:18:33.829508039Z",
+    "agent_lines": 0,
+    "human_added": 12,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 12,
+    "agent_percentage": 0
+  },
+  "transcript_path": ".claude/projects/-home-ubuntu-Documents-Github-smol/fdec0332-7836-4bde-8399-bbb78678f872.jsonl"
+}
