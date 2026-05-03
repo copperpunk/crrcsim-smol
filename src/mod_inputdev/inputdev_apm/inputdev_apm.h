@@ -21,6 +21,7 @@
 #include "apm.h"
 #include "../inputdev.h"
 #include "../../mod_misc/SimpleXMLTransfer.h"
+#include <random>
 
 struct NoiseConfig {
   bool enabled;
@@ -86,6 +87,7 @@ private:
    double            _earth_field_ned[3]; // Gauss, NED
    double            _origin_lat_rad;
    double            _origin_lon_rad;
+   std::mt19937      _rng;
 };
 
 #endif

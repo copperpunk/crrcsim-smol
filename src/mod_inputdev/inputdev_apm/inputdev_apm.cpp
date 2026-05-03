@@ -36,8 +36,6 @@
 
 #pragma GCC optimize("O0")
 
-static std::mt19937 rng(42);
-
 T_TX_InterfaceAPM::T_TX_InterfaceAPM()
 {
     input = NULL;
@@ -115,6 +113,9 @@ int T_TX_InterfaceAPM::init(SimpleXMLTransfer* config)
     input = new APM(devicestr);
     reverse = 0;
 
+    _rng.seed(Global::rng_seed);
+    printf("  noise rng seeded with %u\n", Global::rng_seed);
+
     return 0;
 }
 
@@ -129,7 +130,7 @@ float T_TX_InterfaceAPM::gaussNoise(float sigma)
     if (!_noise.enabled || sigma <= 0.0f)
         return 0.0f;
     std::normal_distribution<float> dist(0.0f, sigma);
-    return dist(rng);
+    return dist(_rng);
 }
 
 #define degrees(r) ((r)*RAD_TO_DEG)
