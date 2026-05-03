@@ -13,6 +13,9 @@
 // launch modes.
 void StartSimCommandListener(uint16_t port);
 
-void StopSimCommandListener(void);  // SIGINT handler hook
+// Currently unwired — declared so a future shutdown path (sub-project 2+)
+// can call it from a normal-exit hook before crrc_exit. Not safe from a
+// signal handler (pthread_join is async-signal-unsafe).
+void StopSimCommandListener(void);
 
 #endif
